@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "players": [
+    {
+      "pad": 0,
+      "bindings": [
+        {
+          "action": "Action1",
+          "sources": [
+            {
+              "Keyboard": "Space"
+            },
+            {
+              "Mouse": "Left"
+            },
+            {
+              "PadButton": "A"
+            }
+          ]
+        },
+        {
+          "action": "Action2",
+          "sources": [
+            {
+              "Keyboard": "ShiftLeft"
+            },
+            {
+              "PadButton": "B"
+            }
+          ]
+        },
+        {
+          "action": "Action3",
+          "sources": [
+            {
+              "PadButton": "X"
+            }
+          ]
+        },
+        {
+          "action": "Action4",
+          "sources": [
+            {
+              "PadButton": "Y"
+            }
+          ]
+        },
+        {
+          "action": "Menu",
+          "sources": [
+            {
+              "Keyboard": "Escape"
+            },
+            {
+              "PadButton": "Start"
+            }
+          ]
+        },
+        {
+          "action": "MoveDown",
+          "sources": [
+            {
+              "Keyboard": "KeyS"
+            },
+            {
+              "PadButton": "DPadDown"
+            },
+            {
+              "PadAxis": [
+                "LeftStickY",
+                "Negative"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "MoveLeft",
+          "sources": [
+            {
+              "Keyboard": "KeyA"
+            },
+            {
+              "PadButton": "DPadLeft"
+            },
+            {
+              "PadAxis": [
+                "LeftStickX",
+                "Negative"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "MoveRight",
+          "sources": [
+            {
+              "Keyboard": "KeyD"
+            },
+            {
+              "PadButton": "DPadRight"
+            },
+            {
+              "PadAxis": [
+                "LeftStickX",
+                "Positive"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "MoveUp",
+          "sources": [
+            {
+              "Keyboard": "KeyW"
+            },
+            {
+              "PadButton": "DPadUp"
+            },
+            {
+              "PadAxis": [
+                "LeftStickY",
+                "Positive"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "Select",
+          "sources": [
+            {
+              "PadButton": "Select"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "pad": 1,
+      "bindings": [
+        {
+          "action": "Action1",
+          "sources": [
+            {
+              "Keyboard": "Enter"
+            },
+            {
+              "PadButton": "A"
+            }
+          ]
+        },
+        {
+          "action": "Action2",
+          "sources": [
+            {
+              "Keyboard": "ShiftRight"
+            },
+            {
+              "PadButton": "B"
+            }
+          ]
+        },
+        {
+          "action": "Action3",
+          "sources": [
+            {
+              "PadButton": "X"
+            }
+          ]
+        },
+        {
+          "action": "Action4",
+          "sources": [
+            {
+              "PadButton": "Y"
+            }
+          ]
+        },
+        {
+          "action": "Menu",
+          "sources": [
+            {
+              "Keyboard": "Escape"
+            },
+            {
+              "PadButton": "Start"
+            }
+          ]
+        },
+        {
+          "action": "MoveDown",
+          "sources": [
+            {
+              "Keyboard": "ArrowDown"
+            },
+            {
+              "PadButton": "DPadDown"
+            },
+            {
+              "PadAxis": [
+                "LeftStickY",
+                "Negative"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "MoveLeft",
+          "sources": [
+            {
+              "Keyboard": "ArrowLeft"
+            },
+            {
+              "PadButton": "DPadLeft"
+            },
+            {
+              "PadAxis": [
+                "LeftStickX",
+                "Negative"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "MoveRight",
+          "sources": [
+            {
+              "Keyboard": "ArrowRight"
+            },
+            {
+              "PadButton": "DPadRight"
+            },
+            {
+              "PadAxis": [
+                "LeftStickX",
+                "Positive"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "MoveUp",
+          "sources": [
+            {
+              "Keyboard": "ArrowUp"
+            },
+            {
+              "PadButton": "DPadUp"
+            },
+            {
+              "PadAxis": [
+                "LeftStickY",
+                "Positive"
+              ]
+            }
+          ]
+        },
+        {
+          "action": "Select",
+          "sources": [
+            {
+              "PadButton": "Select"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

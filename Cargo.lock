@@ -713,6 +713,7 @@ dependencies = [
  "ecs",
  "gilrs",
  "glam",
+ "image",
  "input",
  "log",
  "physics",

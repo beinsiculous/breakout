@@ -1,0 +1,28 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/commit-review-hook.sh\"",
+            "statusMessage": "Checking commit size against review convention"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "ExitPlanMode",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"Project convention: approved plans get an adversarial review BEFORE implementation. DOES NOT APPLY if you are a subagent whose plan implements a section of an already-reviewed plan (review/plan*.md carrying review rounds + rebuttals) — in that case ignore this notice entirely and never clear review/. Otherwise, unless the user explicitly skipped review or the plan is trivial (typo-level): do NOT edit code or dispatch implementation agents yet. First clear stale artifacts in review/ ONLY if they belong to a previous, settled review subject, write the approved plan to review/plan.md, run scripts/request-review.sh plan review/plan.md --reviewer=kimi, then present and adjudicate every finding with the user. Implementation starts only after the user calls the plan settled. While the headless review runs, read-only investigation is fine; edits are not.\"}}'",
+            "statusMessage": "Reminding about adversarial review"
+          }
+        ]
+      }
+    ]
+  }
+}

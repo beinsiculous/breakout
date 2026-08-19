@@ -1,14 +1,16 @@
 //! Scene-driven brick layouts.
 //!
-//! The brick grid is authored in `assets/scenes/level1.scene.ron` (editable
-//! in the engine editor) and instantiated at every match start. Bricks are
+//! The brick grid is authored in `<asset base>/scenes/level1.scene.ron`
+//! (editable in the engine editor) and instantiated at every match start.
+//! Every read goes through the configured asset base, so the same code
+//! reads the game dir natively and the VFS on the web. Bricks are
 //! identified by the `brick_r{row}_c{col}` naming convention; the row digit
 //! drives the score payout, which stays a game rule in Rust
 //! (`spawning::brick_value`). If the scene is missing or yields no bricks,
 //! the caller falls back to the generated grid in `spawning::spawn_bricks`.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use engine_core::prelude::*;
 
@@ -65,23 +67,31 @@ pub(crate) fn level_hint(mode: GameMode, index: usize) -> &'static str {
     }
 }
 
-/// Absolute path of a level scene file.
+/// Path of a level scene file, anchored to the configured asset base.
 ///
-/// `SceneLoader::load_from_file` takes raw filesystem paths (it does not go
-/// through `GameConfig.asset_base_path`), so the path is anchored explicitly.
-pub(crate) fn level_scene_path(scene_file: &str) -> PathBuf {
-    engine_core::game_root!().join("assets/scenes").join(scene_file)
+/// `SceneLoader::load_from_file` takes a path rather than an asset-base
+/// relative name, so the join happens here. `asset_base` must be the same
+/// string the game passed to `GameConfig::with_asset_base_path`
+/// (`ctx.assets.base_path()`): natively that is the absolute `assets` dir,
+/// on the web it is the deploy URL base and the joined string is the
+/// scene's exact VFS key (`{base}/scenes/level1.scene.ron`).
+pub(crate) fn level_scene_path(asset_base: &str, scene_file: &str) -> PathBuf {
+    Path::new(asset_base).join("scenes").join(scene_file)
 }
 
-/// Parse a level's scene from disk. Returns `None` (with a console warning)
-/// if the file is missing or malformed — the game then uses the generated
-/// grid instead of failing to start.
-pub(crate) fn load_level_data(mode: GameMode, index: usize) -> Option<SceneData> {
+/// Parse a level's scene from the asset base. Returns `None` (with a console
+/// warning) if the file is missing or malformed — the game then uses the
+/// generated grid instead of failing to start.
+pub(crate) fn load_level_data(
+    asset_base: &str,
+    mode: GameMode,
+    index: usize,
+) -> Option<SceneData> {
     let Some(def) = roster(mode).get(index) else {
         eprintln!("breakout: level index {index} out of range; using generated brick grid");
         return None;
     };
-    let path = level_scene_path(def.scene_file);
+    let path = level_scene_path(asset_base, def.scene_file);
     match SceneLoader::load_from_file(&path) {
         Ok(data) => Some(data),
         Err(e) => {

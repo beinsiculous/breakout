@@ -8,7 +8,25 @@ edition = "2021"
 # (dockable panels, inspector, play/pause/stop, collider overlay).
 editor = ["dep:editor_integration"]
 
+# cdylib = the wasm module; rlib = the native bin's normal path.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 engine_core = { path = "../../insiculous_2d/crates/engine_core" }
 editor_integration = { path = "../../insiculous_2d/crates/editor_integration", optional = true }
 glam = { version = "0.30.10", features = ["serde"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# The `=` pin must match the wasm-bindgen CLI (asserted by build_wasm.sh)
+# and engine_core's own pin.
+wasm-bindgen = "=0.2.126"
+wasm-bindgen-futures = "0.4"
+log = "0.4"
+
+# Web builds: small + LTO'd, without touching the native release profile.
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+strip = "debuginfo"

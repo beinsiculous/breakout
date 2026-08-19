@@ -50,7 +50,7 @@ pub(crate) enum PickupKind {
     Insiculous,
 }
 
-pub(crate) struct BreakoutGame {
+pub struct BreakoutGame {
     pub(crate) physics: PhysicsSystem,
 
     pub(crate) paddle: Option<EntityId>,

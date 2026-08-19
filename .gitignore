@@ -25,3 +25,4 @@ rustc-ice-*.txt
 # review transients (adversarial-review outputs)
 review/*
 !review/.gitkeep
+/dist

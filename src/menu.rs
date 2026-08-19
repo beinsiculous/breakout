@@ -120,7 +120,11 @@ impl BreakoutGame {
     /// to the generated grid when the scene is missing, broken, or empty —
     /// worst case is always the classic layout, never a brickless game.
     fn spawn_level_bricks(&mut self, ctx: &mut GameContext) -> Vec<Brick> {
-        if let Some(level) = crate::levels::load_level_data(self.mode, self.selected_level) {
+        // Owned copy: the scene load below borrows `ctx.assets` mutably.
+        let asset_base = ctx.assets.base_path().to_string();
+        if let Some(level) =
+            crate::levels::load_level_data(&asset_base, self.mode, self.selected_level)
+        {
             match crate::levels::spawn_bricks_from_scene(&level, ctx.world, ctx.assets) {
                 Ok(bricks) if !bricks.is_empty() => return bricks,
                 Ok(_) => eprintln!(

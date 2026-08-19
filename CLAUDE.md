@@ -92,7 +92,7 @@ Planned identity for this game under the Deion pivot (see the engine's `PROJECT_
 - Style SSOT: `deion_assets/DEION_STYLE.md` via the root symlink (the symlink assumes the standard side-by-side checkout — the same requirement the Cargo path dependency already imposes).
 - Metrics: 16px base cell, nearest filtering, 5× integer scale to `RENDER_UNIT = 80`. Never fake footprints via `Transform2D.scale` (colliders ignore it).
 - Runtime assets arrive ONLY via the deion_assets sync copy into `assets/sprites/` (F2 tooling, not yet built) — never symlink art in, never hand-copy.
-- AI art is quarantined: `ai_` prefix, lives only in `deion_assets/ai/`, NEVER ships. `deion_assets/scripts/check_no_ai_assets.sh` must pass on shipping asset trees.
+- AI art is quarantined: `ai_` prefix, lives only in `deion_assets/ai/`, ships in FREE web builds only, never in paid/marketplace builds (tiered rule, DEION_STYLE.md §6, Aug 19 2026). `deion_assets/scripts/check_no_ai_assets.sh` must pass on any paid release's asset tree.
 - Sheet clip names (`.sheet.ron` sidecars) are the stable API between art and code.
 
 ## Review workflow

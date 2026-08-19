@@ -4,13 +4,33 @@ use crate::constants::*;
 use crate::spawning;
 use crate::types::*;
 
+/// Panel layouts shared by the input half (mouse hit-testing here) and the
+/// drawing half (`drawing.rs`) — the geometry must match or clicks land
+/// beside the drawn rows. Titles only affect the label, never the layout.
+pub(crate) fn title_panel(title: &str, window_size: Vec2) -> MenuPanel {
+    MenuPanel::new(title, window_size / 2.0, 380.0, 4)
+}
+/// Row count follows the mode's roster, so the hit-tested rows can never
+/// drift from the drawn ones when a level is added.
+pub(crate) fn level_select_panel(title: &str, window_size: Vec2, mode: GameMode) -> MenuPanel {
+    MenuPanel::new(title, window_size / 2.0, 420.0, crate::levels::roster(mode).len())
+}
+pub(crate) fn achievements_panel(title: &str, window_size: Vec2) -> MenuPanel {
+    MenuPanel::new(title, window_size / 2.0, window_size.x - 120.0, 15)
+}
+
 impl BreakoutGame {
     pub(crate) fn update_title_input(&mut self, ctx: &mut GameContext, selection: u8) {
         let input = MenuInput::read(ctx.input);
-        let selection = input.navigate(selection, 4);
+        let mouse = title_panel("", ctx.window_size).mouse_select(ctx.input);
+        let selection = mouse.hovered.unwrap_or(selection);
+        let mut selection = input.navigate(selection, 4);
+        if let Some(row) = mouse.clicked {
+            selection = row;
+        }
         self.state = GameState::TitleScreen { selection };
 
-        if input.confirm {
+        if input.confirm || mouse.clicked.is_some() {
             match selection {
                 0 => {
                     self.mode = GameMode::SinglePlayer;
@@ -28,7 +48,12 @@ impl BreakoutGame {
 
     pub(crate) fn update_achievements_input(&mut self, ctx: &mut GameContext) {
         let input = MenuInput::read(ctx.input);
-        if input.back || input.confirm {
+        // The page is one big non-selectable list: any click on it dismisses,
+        // same as confirm/back.
+        // Whole-window dismiss: clicks on headers/margins count too, not
+        // just the row bands (the page is one big info sheet).
+        let click_dismiss = achievements_panel("", ctx.window_size).clicked_inside(ctx.input);
+        if input.back || input.confirm || click_dismiss {
             self.state = GameState::TitleScreen { selection: 2 };
         }
     }
@@ -36,12 +61,17 @@ impl BreakoutGame {
     pub(crate) fn update_level_select_input(&mut self, ctx: &mut GameContext, selection: u8) {
         let input = MenuInput::read(ctx.input);
         let levels = crate::levels::roster(self.mode);
-        let selection = input.navigate(selection, levels.len() as u8);
+        let mouse = level_select_panel("", ctx.window_size, self.mode).mouse_select(ctx.input);
+        let selection = mouse.hovered.unwrap_or(selection);
+        let mut selection = input.navigate(selection, levels.len() as u8);
+        if let Some(row) = mouse.clicked {
+            selection = row;
+        }
         self.state = GameState::LevelSelect { selection };
 
         if input.back {
             self.state = GameState::TitleScreen { selection: 0 };
-        } else if input.confirm {
+        } else if input.confirm || mouse.clicked.is_some() {
             let index = selection as usize;
             self.selected_level = index;
             // Chaos mode is a property of the level now, not a menu choice.

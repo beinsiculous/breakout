@@ -1,6 +1,7 @@
 use engine_core::prelude::*;
 use crate::achievements::DISPLAY_SECTIONS;
 use crate::chaos_theme::theme_for;
+use crate::menu::{achievements_panel, level_select_panel, title_panel};
 use crate::types::*;
 
 impl BreakoutGame {
@@ -19,19 +20,23 @@ impl BreakoutGame {
 
     fn draw_title(&self, ctx: &mut GameContext, selection: u8) {
         let style = self.menu_style();
-        let panel = MenuPanel::new("INSICULOUS BREAKOUT", ctx.window_size / 2.0, 380.0, 4);
+        let panel = title_panel("INSICULOUS BREAKOUT", ctx.window_size);
         let mut y = panel.begin(ctx.ui, &style);
         let items = ["1 Player", "2 Player Co-op", "Achievements", "Exit"];
         for (i, item) in items.iter().enumerate() {
             y = panel.item(ctx.ui, y, item, i as u8 == selection, &style);
         }
-        panel.hint(ctx.ui, "W/S or D-Pad navigate - SPACE or (A) confirm", &style);
+        panel.hint(
+            ctx.ui,
+            "W/S or D-Pad navigate - SPACE/ENTER, (A), or click confirm",
+            &style,
+        );
     }
 
     fn draw_level_select(&self, ctx: &mut GameContext, selection: u8) {
         let style = self.menu_style();
         let roster = crate::levels::roster(self.mode);
-        let panel = MenuPanel::new("SELECT LEVEL", ctx.window_size / 2.0, 420.0, roster.len());
+        let panel = level_select_panel("SELECT LEVEL", ctx.window_size, self.mode);
         let mut y = panel.begin(ctx.ui, &style);
         for (i, level) in roster.iter().enumerate() {
             // Each entry glows in its chaos mode's banner color.
@@ -59,7 +64,7 @@ impl BreakoutGame {
         let unlocked = ctx.achievements.unlocked_count();
 
         // Tall window; the section list draws left-aligned inside it.
-        let panel = MenuPanel::new("ACHIEVEMENTS", ctx.window_size / 2.0, ctx.window_size.x - 120.0, 15);
+        let panel = achievements_panel("ACHIEVEMENTS", ctx.window_size);
         let first_y = panel.begin(ctx.ui, &style);
         let rect = panel.panel_rect();
         ctx.ui.label_centered(
@@ -101,7 +106,7 @@ impl BreakoutGame {
             y += 6.0;
         }
 
-        panel.hint(ctx.ui, "ESC or SPACE to go back", &style);
+        panel.hint(ctx.ui, "ESC, SPACE, or click to go back", &style);
     }
 
     fn draw_gameplay(&self, ctx: &mut GameContext) {
@@ -138,7 +143,7 @@ impl BreakoutGame {
         match &self.state {
             GameState::Serving => {
                 let server = match (self.mode, self.serving_side) {
-                    (GameMode::SinglePlayer, _) => "SPACE or CLICK to launch",
+                    (GameMode::SinglePlayer, _) => "SPACE, ENTER, or CLICK to launch",
                     (_, PaddleSide::Bottom) => "P1 SERVES - SPACE, CLICK, or (A) to launch",
                     (_, PaddleSide::Top) => "P2 SERVES - ENTER or (A) to launch",
                 };
@@ -151,7 +156,7 @@ impl BreakoutGame {
                 let panel = MenuPanel::new(msg, Vec2::new(cx, cy), 340.0, 2);
                 let mut y = panel.begin(ctx.ui, &style);
                 y = panel.line(ctx.ui, y, &format!("Final score: {}", self.score), &style);
-                panel.line(ctx.ui, y, "SPACE to play again", &style);
+                panel.line(ctx.ui, y, "SPACE or ENTER to play again", &style);
                 panel.hint(ctx.ui, "ESC for title screen", &style);
             }
             _ => {}

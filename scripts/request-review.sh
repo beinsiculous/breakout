@@ -9,14 +9,18 @@
 # Writes the review to --out (default: review/review-N.md, N auto-incremented)
 # and prints the output path on stdout so callers can capture it.
 #
-# Reviewer invocation (verified against installed CLIs, Jul 2026):
+# Reviewer invocation (verified against installed CLIs, Aug 2026):
 #   claude: prompt piped on stdin to `claude -p`, response on stdout.
-#   kimi:   prompt piped on stdin to `kimi --quiet` (= --print --output-format
-#           text --final-message-only). NOTE: kimi's print mode auto-approves
-#           tool calls, so --work-dir is pinned to review/ to scope any tool
-#           use. Widening it to the repo root would let kimi read surrounding
-#           code (better regression context) at the cost of auto-approved
-#           write access — kept conservative on purpose.
+#   kimi:   prompt passed as an argument to `kimi -p <prompt>` (kimi-code
+#           0.36+; the old --quiet/--work-dir flags are gone). Progress logs
+#           go to stderr, the final review to stdout. There is no work-dir
+#           flag anymore, so the invocation cd's into review/ to keep any
+#           tool use scoped there. Widening to the repo root would let kimi
+#           read surrounding code (better regression context) at the cost of
+#           non-interactive tool access — kept conservative on purpose.
+#           Linux caps a single argv string at ~128 KiB, so oversized
+#           artifacts fail loud with a size check rather than a cryptic
+#           "Argument list too long".
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -67,13 +71,24 @@ if [[ -z "$OUT" ]]; then
 fi
 
 echo "==> reviewer ($REVIEWER) critiquing $ARTIFACT -> $OUT" >&2
-{
+PAYLOAD="$(
     cat "$PROMPT_FILE"
     printf '\n=== %s UNDER REVIEW ===\n' "$LABEL"
     cat "$ARTIFACT"
-} | case "$REVIEWER" in
-        claude) claude -p ;;
-        kimi)   kimi --quiet --work-dir "$REVIEW_DIR" ;;
-    esac > "$OUT"
+)"
+case "$REVIEWER" in
+    claude) printf '%s\n' "$PAYLOAD" | claude -p > "$OUT" ;;
+    kimi)
+        # kimi -p takes the prompt as one argv string; Linux caps those at
+        # ~128 KiB (MAX_ARG_STRLEN). Fail loud instead of "Argument list too
+        # long" — split the artifact or use --reviewer=claude for huge diffs.
+        payload_bytes=$(printf '%s' "$PAYLOAD" | wc -c)
+        if [[ "$payload_bytes" -gt 120000 ]]; then
+            echo "error: payload is $payload_bytes bytes (>120000); too large for kimi -p" >&2
+            exit 1
+        fi
+        (cd "$REVIEW_DIR" && kimi -p "$PAYLOAD") > "$OUT"
+        ;;
+esac
 
 echo "$OUT"

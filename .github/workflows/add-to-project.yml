@@ -1,0 +1,19 @@
+# Adds every new issue in this repo to the org Studio Board
+# (https://github.com/orgs/beinsiculous/projects/1).
+#
+# Needs the ADD_TO_PROJECT_PAT repo secret: a token with `project` scope —
+# the default GITHUB_TOKEN cannot write to org-level projects.
+name: Add issues to the Studio Board
+
+on:
+  issues:
+    types: [opened, reopened]
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@v2.0.0
+        with:
+          project-url: https://github.com/orgs/beinsiculous/projects/1
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}

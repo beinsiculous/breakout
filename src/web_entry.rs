@@ -1,9 +1,10 @@
 //! Browser entry point: fetch all assets into the engine's VFS, then run
 //! the exact same game `main.rs` runs natively.
 //!
-//! No save paths are configured on the web, so the engine's existing
-//! fallbacks apply: in-memory achievements and default two-player input
-//! bindings (full browser persistence is the deferred H6 work).
+//! Saves persist to browser localStorage: on wasm the engine treats the
+//! `GameConfig` save-path strings as localStorage keys (achievements, high
+//! scores, input bindings — see the engine's `docs/WEB_SAVES.md` contract).
+//! The site's profile page reads the same keys.
 
 use engine_core::prelude::run_game;
 use engine_core::web::{init_web_logging, preload_assets, set_boot_status};
@@ -28,7 +29,11 @@ pub fn start() {
             set_boot_status(&format!("Failed to load assets: {e}"));
             return;
         }
-        if let Err(e) = run_game(crate::BreakoutGame::default(), crate::game_config(ASSET_BASE)) {
+        let config = crate::game_config(ASSET_BASE)
+            .with_achievement_save_path("beinsiculous.games.breakout.achievements")
+            .with_input_settings_path("beinsiculous.games.breakout.input")
+            .with_score_save_path("beinsiculous.games.breakout.scores");
+        if let Err(e) = run_game(crate::BreakoutGame::default(), config) {
             log::error!("failed to start game: {e}");
             set_boot_status(&format!("Failed to start: {e}"));
         }

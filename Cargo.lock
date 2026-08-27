@@ -674,6 +674,7 @@ dependencies = [
  "common",
  "ecs",
  "glam",
+ "indexmap",
  "input",
  "log",
  "physics",

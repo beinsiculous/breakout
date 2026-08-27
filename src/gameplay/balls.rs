@@ -179,6 +179,7 @@ impl BreakoutGame {
         self.wrecking.stop();
         if self.lives == 0 {
             self.destroy_all_pickups(ctx.world);
+            ctx.scores.submit(super::flow::score_mode(self.mode), self.score as u64);
             self.state = GameState::GameOver { won: false };
             return;
         }

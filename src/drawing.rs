@@ -1,7 +1,7 @@
 use engine_core::prelude::*;
 use crate::achievements::DISPLAY_SECTIONS;
 use crate::chaos_theme::theme_for;
-use crate::menu::{achievements_panel, level_select_panel, title_panel};
+use crate::menu::{achievements_panel, level_select_panel, title_label, title_panel, TITLE_ITEMS};
 use crate::types::*;
 
 impl BreakoutGame {
@@ -22,9 +22,8 @@ impl BreakoutGame {
         let style = self.menu_style();
         let panel = title_panel("INSICULOUS BREAKOUT", ctx.window_size);
         let mut y = panel.begin(ctx.ui, &style);
-        let items = ["1 Player", "2 Player Co-op", "Achievements", "Exit"];
-        for (i, item) in items.iter().enumerate() {
-            y = panel.item(ctx.ui, y, item, i as u8 == selection, &style);
+        for (i, item) in TITLE_ITEMS.iter().enumerate() {
+            y = panel.item(ctx.ui, y, title_label(*item), i as u8 == selection, &style);
         }
         panel.hint(
             ctx.ui,

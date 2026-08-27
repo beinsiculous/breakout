@@ -6,7 +6,8 @@ fn main() {
     let root = engine_core::game_root!();
     let config = game_config(&root.join("assets").to_string_lossy())
         .with_achievement_save_path(root.join("saves/breakout_achievements.json").to_string_lossy())
-        .with_input_settings_path(root.join("saves/input_settings.json").to_string_lossy());
+        .with_input_settings_path(root.join("saves/input_settings.json").to_string_lossy())
+        .with_score_save_path(root.join("saves/breakout_scores.json").to_string_lossy());
 
     // With `--features editor` the game runs inside the scene editor
     // (hierarchy, inspector, gizmos, play/pause/stop, collider overlay);

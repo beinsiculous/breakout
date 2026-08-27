@@ -3,6 +3,15 @@
 use engine_core::prelude::*;
 use crate::types::*;
 
+/// High-score board a session records into (see docs/WEB_SAVES.md: mode
+/// strings are game-defined, lowercase, stable).
+pub(crate) fn score_mode(mode: GameMode) -> &'static str {
+    match mode {
+        GameMode::SinglePlayer => "single",
+        GameMode::TwoPlayerCoop => "coop",
+    }
+}
+
 /// Who serves after a lost ball: in co-op the side that lost it redeems;
 /// solo always serves from the bottom (there is no top paddle).
 pub(crate) fn serve_side_after_loss(mode: GameMode, lost_past: PaddleSide) -> PaddleSide {
@@ -46,6 +55,7 @@ impl BreakoutGame {
         self.destroy_all_pickups(ctx.world);
         self.wrecking.stop();
         self.unlock_win_achievements(ctx);
+        ctx.scores.submit(score_mode(self.mode), self.score as u64);
         self.state = GameState::GameOver { won: true };
     }
 

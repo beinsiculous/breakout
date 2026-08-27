@@ -4,11 +4,49 @@ use crate::constants::*;
 use crate::spawning;
 use crate::types::*;
 
+/// Title-screen menu entries. Both halves (input hit-testing here, drawing
+/// in `drawing.rs`) derive rows from `TITLE_ITEMS`, so keyboard, mouse, and
+/// labels can never desync when the roster changes per target.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TitleItem {
+    OnePlayer,
+    TwoPlayerCoop,
+    Achievements,
+    Exit,
+}
+
+/// The web build hides "Achievements" — the site's game page shows the same
+/// unlocks (read from localStorage) beside the canvas instead.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) const TITLE_ITEMS: &[TitleItem] = &[
+    TitleItem::OnePlayer,
+    TitleItem::TwoPlayerCoop,
+    TitleItem::Achievements,
+    TitleItem::Exit,
+];
+#[cfg(target_arch = "wasm32")]
+pub(crate) const TITLE_ITEMS: &[TitleItem] =
+    &[TitleItem::OnePlayer, TitleItem::TwoPlayerCoop, TitleItem::Exit];
+
+/// Row index of `item` in the current target's roster (0 if absent).
+pub(crate) fn title_index(item: TitleItem) -> u8 {
+    TITLE_ITEMS.iter().position(|i| *i == item).unwrap_or(0) as u8
+}
+
+pub(crate) fn title_label(item: TitleItem) -> &'static str {
+    match item {
+        TitleItem::OnePlayer => "1 Player",
+        TitleItem::TwoPlayerCoop => "2 Player Co-op",
+        TitleItem::Achievements => "Achievements",
+        TitleItem::Exit => "Exit",
+    }
+}
+
 /// Panel layouts shared by the input half (mouse hit-testing here) and the
 /// drawing half (`drawing.rs`) — the geometry must match or clicks land
 /// beside the drawn rows. Titles only affect the label, never the layout.
 pub(crate) fn title_panel(title: &str, window_size: Vec2) -> MenuPanel {
-    MenuPanel::new(title, window_size / 2.0, 380.0, 4)
+    MenuPanel::new(title, window_size / 2.0, 380.0, TITLE_ITEMS.len())
 }
 /// Row count follows the mode's roster, so the hit-tested rows can never
 /// drift from the drawn ones when a level is added.
@@ -24,24 +62,27 @@ impl BreakoutGame {
         let input = MenuInput::read(ctx.input);
         let mouse = title_panel("", ctx.window_size).mouse_select(ctx.input);
         let selection = mouse.hovered.unwrap_or(selection);
-        let mut selection = input.navigate(selection, 4);
+        // An out-of-range stored selection (e.g. the shorter wasm menu)
+        // clamps instead of panicking at the dispatch index below.
+        let selection = selection.min(TITLE_ITEMS.len() as u8 - 1);
+        let mut selection = input.navigate(selection, TITLE_ITEMS.len() as u8);
         if let Some(row) = mouse.clicked {
             selection = row;
         }
         self.state = GameState::TitleScreen { selection };
 
         if input.confirm || mouse.clicked.is_some() {
-            match selection {
-                0 => {
+            match TITLE_ITEMS[selection as usize] {
+                TitleItem::OnePlayer => {
                     self.mode = GameMode::SinglePlayer;
                     self.state = GameState::LevelSelect { selection: 0 };
                 }
-                1 => {
+                TitleItem::TwoPlayerCoop => {
                     self.mode = GameMode::TwoPlayerCoop;
                     self.state = GameState::LevelSelect { selection: 0 };
                 }
-                2 => self.state = GameState::Achievements,
-                _ => ctx.exit_requested = true,
+                TitleItem::Achievements => self.state = GameState::Achievements,
+                TitleItem::Exit => ctx.exit_requested = true,
             }
         }
     }
@@ -54,7 +95,9 @@ impl BreakoutGame {
         // just the row bands (the page is one big info sheet).
         let click_dismiss = achievements_panel("", ctx.window_size).clicked_inside(ctx.input);
         if input.back || input.confirm || click_dismiss {
-            self.state = GameState::TitleScreen { selection: 2 };
+            self.state = GameState::TitleScreen {
+                selection: title_index(TitleItem::Achievements),
+            };
         }
     }
 

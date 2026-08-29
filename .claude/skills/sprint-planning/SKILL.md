@@ -102,13 +102,37 @@ same description. Cross-repo issues then read identically from either side.
 Set `Sprint` on every issue in the batch, in whichever repo it lives. This is the only
 record that holds a cross-repo batch together.
 
+**Batch the writes into one request.** `gh project item-edit` sends one HTTP request per
+issue, and GitHub's *secondary* rate limit (~500 content-generating requests/hour, separate
+from the documented 5,000/hr quota and not raised by any paid plan) will stop a sprint-sized
+backfill partway. Alias the mutations instead — any number of field writes in a single call:
+
+```sh
+gh api graphql -f query='
+mutation {
+  a0: updateProjectV2ItemFieldValue(input: {projectId: "PVT_…", itemId: "PVTI_…a",
+      fieldId: "PVTSSF_…", value: {singleSelectOptionId: "…"}}) { projectV2Item { id } }
+  a1: updateProjectV2ItemFieldValue(input: {projectId: "PVT_…", itemId: "PVTI_…b",
+      fieldId: "PVTSSF_…", value: {singleSelectOptionId: "…"}}) { projectV2Item { id } }
+}'
+```
+
+Build the aliased mutation from the `item-list` output, and read current values first so a
+re-run only writes what differs — that keeps a resumed run cheap as well as correct. Use
+the single-item form below only for a one-off:
+
 ```sh
 gh project item-edit --project-id <PVT_…> --id <PVTI_…> \
   --field-id <sprint-field-id> --single-select-option-id <option-id>
 ```
 
 Adding a new sprint means adding its option to the field first. Do it idempotently —
-check `gh project field-list` and skip if the option is already there.
+check `gh project field-list` and skip if the option is already there. Note that **renaming
+an existing option invalidates every value set from it**, silently clearing those issues;
+re-run the backfill after any rename.
+
+Milestone work is REST (`gh api repos/{owner}/{repo}/milestones`) and unaffected by the
+GraphQL secondary limit — if the board is throttled, the milestone half can still proceed.
 
 ## 5. Verify
 

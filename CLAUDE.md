@@ -95,6 +95,27 @@ Planned identity for this game under the Deion pivot (see the engine's `PROJECT_
 - AI art is quarantined: `ai_` prefix, lives only in `deion_assets/ai/`, ships in FREE web builds only, never in paid/marketplace builds (tiered rule, DEION_STYLE.md §6, Aug 19 2026). `deion_assets/scripts/check_no_ai_assets.sh` must pass on any paid release's asset tree.
 - Sheet clip names (`.sheet.ron` sidecars) are the stable API between art and code.
 
+## Work tracking
+
+Open work lives on the **Studio Board** (https://github.com/orgs/beinsiculous/projects/1)
+as issues in this repo. **Always pass `-R beinsiculous/breakout`** — a bare `gh` command
+resolves against the session's working directory, which is often the working-set root, so
+it lists and files against the wrong repository.
+
+```sh
+gh issue list -R beinsiculous/breakout
+gh api repos/beinsiculous/breakout/milestones --jq '.[] | "\(.title): \(.description)"'
+```
+
+Issues are grouped into **sprint milestones**; each description records the batch's
+internal order and its gates. Take the next unblocked issue in a sprint, not an arbitrary
+one. Claim by assigning yourself; close with `fixes beinsiculous/breakout#N` in the commit.
+
+**Unfinished work becomes an issue.** Anything you don't finish — work you deferred, debt
+you created, a follow-up you spotted — is filed before you report done. Never buried in a
+doc, never left as a bare `TODO:`, never dropped. The `file-issue` skill carries the shape;
+`sprint-planning` groups issues into shippable batches.
+
 ## Review workflow
 
 - The adversarial-review skill lives in `.claude/skills/adversarial-review/`; prompt templates in `prompts/`.

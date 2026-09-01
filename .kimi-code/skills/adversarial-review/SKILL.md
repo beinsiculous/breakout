@@ -78,9 +78,10 @@ stale files leak into its context. Never clear mid-subject —
    or rebutting.
 4. Write `review/rebuttal-N.md` (every finding, ACCEPT or REBUT). Accepted
    findings become real edits in the working tree — make them with the user's
-   approval, following the project's normal verification rules
-   (`npm run data` → `npm run verify`, per AGENTS.md — the second runs the Python
-   suite, `astro check`, the build and the accessibility gate).
+   approval, then run **this repo's own verification gate**. This file is
+   copied verbatim into every repo in the working set and they do not share
+   one command, so the gate is whatever this repo's own guide names. Read it
+   rather than carrying the last repo's command across.
 5. If edits were made and the user wants another round, regenerate the diff
    and repeat.
 
@@ -140,6 +141,15 @@ matcher = "Bash"
 command = "<repo>/scripts/commit-review-hook.sh --harness=kimi"
 timeout = 10
 ```
+
+Both hook scripts are covered by `tests/test_hooks.py` in
+**`beinsiculous/insiculous_web`** — the only repo carrying that suite, and it
+runs against *that repo's copies* of the scripts. What makes it coverage of the
+canonical is `scripts/check-skill-parity.sh`, which holds every copy
+byte-identical to `beinsiculous/insiculous`; break parity and the suite is
+testing something else. Do not read that path relative to whichever repo you
+are in — it resolves only in `insiculous_web`, and the canonical's own repo
+runs no test of its own (`beinsiculous/insiculous#23`).
 
 Findings are always adjudicated with the user — an explicit user opt-out
 always wins, and is recorded as the signed skip trailers above.

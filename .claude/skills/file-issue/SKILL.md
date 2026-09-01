@@ -30,7 +30,7 @@ git -C <path-to-repo> remote get-url origin     # -> https://github.com/beinsicu
 
 Work belongs to the repo that owns the code: engine → `insiculous_2d`; a game → that
 game's own repo (`pong`, `snake`, `breakout`, `frogger`, `asteroids`, `space_invaders`);
-the site or either app face → `insiculous_web`; the Champions' app → `fortresskey`;
+the site and the web face → `insiculous_web`; the Fort Knight app → `fortknight`;
 Deion art → `deion_assets`; the working set's own docs, prompts and skills →
 `insiculous`.
 
@@ -121,7 +121,7 @@ has it — which is every repo **except the root `insiculous` repo**, tracked as
 gh project item-add 1 --owner beinsiculous --url <issue-url>
 ```
 
-`fortresskey` has the workflow but it fails until its `ADD_TO_PROJECT_PAT` secret is set.
+`fortknight` has the workflow but it fails until its `ADD_TO_PROJECT_PAT` secret is set.
 Check whether the issue landed on the board before adding it by hand — adding one that the
 workflow already added creates a duplicate row.
 

@@ -82,7 +82,7 @@ impl BreakoutGame {
                     self.state = GameState::LevelSelect { selection: 0 };
                 }
                 TitleItem::Achievements => self.state = GameState::Achievements,
-                TitleItem::Exit => ctx.exit_requested = true,
+                TitleItem::Exit => ctx.request_exit(),
             }
         }
     }

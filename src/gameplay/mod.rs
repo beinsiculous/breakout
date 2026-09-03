@@ -47,7 +47,7 @@ impl BreakoutGame {
             match action {
                 PauseAction::Restart => { self.start_game(ctx); return; }
                 PauseAction::QuitToTitle => { self.reset_to_title(ctx.world); return; }
-                PauseAction::ExitGame => { ctx.exit_requested = true; return; }
+                PauseAction::ExitGame => { ctx.request_exit(); return; }
                 // Skip the rest of the frame so the resuming keypress can't
                 // leak into gameplay (Space must not also launch the ball).
                 PauseAction::Resumed => return,

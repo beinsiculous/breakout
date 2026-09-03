@@ -55,7 +55,7 @@ impl BreakoutGame {
         self.destroy_all_pickups(ctx.world);
         self.wrecking.stop();
         self.unlock_win_achievements(ctx);
-        ctx.scores.submit(score_mode(self.mode), self.score as u64);
+        let _ = ctx.scores.submit(score_mode(self.mode), self.score as u64);
         self.state = GameState::GameOver { won: true };
     }
 

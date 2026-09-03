@@ -102,10 +102,14 @@ same description. Cross-repo issues then read identically from either side.
 Set `Sprint` on every issue in the batch, in whichever repo it lives. This is the only
 record that holds a cross-repo batch together.
 
-**Batch the writes into one request.** `gh project item-edit` sends one HTTP request per
-issue, and GitHub's *secondary* rate limit (~500 content-generating requests/hour, separate
-from the documented 5,000/hr quota and not raised by any paid plan) will stop a sprint-sized
-backfill partway. Alias the mutations instead — any number of field writes in a single call:
+**Batch the writes, in chunks.** `gh project item-edit` sends one HTTP request per issue,
+and GitHub's *secondary* rate limit (~500 content-generating requests/hour, separate from
+the documented 5,000/hr quota and not raised by any paid plan) will stop a sprint-sized
+backfill partway. Alias the mutations instead — but **there is a second, per-query limit**,
+so this is not "any number in one call": ~69 aliases returns `Resource limits for this
+query exceeded`, while 40 and 20 both succeed (observed 2026-08-30 and 2026-08-31).
+**Chunk at 40 or below** and send several calls; a sprint-sized backfill is two or three
+requests, nowhere near the secondary limit.
 
 ```sh
 gh api graphql -f query='
@@ -126,10 +130,57 @@ gh project item-edit --project-id <PVT_…> --id <PVTI_…> \
   --field-id <sprint-field-id> --single-select-option-id <option-id>
 ```
 
-Adding a new sprint means adding its option to the field first. Do it idempotently —
-check `gh project field-list` and skip if the option is already there. Note that **renaming
-an existing option invalidates every value set from it**, silently clearing those issues;
-re-run the backfill after any rename.
+### Adding a sprint's option — pass every existing option's `id` back
+
+`updateProjectV2Field` **replaces** the option set. An option you send without an `id` is
+created fresh, with a fresh id — and every issue whose `Sprint` pointed at the old id is
+silently cleared. Send the whole list without ids and you wipe the field across the entire
+board, in one call, with no error and no confirmation.
+
+The input type says how to avoid it, and it is the only thing you have to get right:
+
+> `id` — *"The ID of an existing single select option. Include this to preserve the
+> option's identity during updates, preventing item field values from being cleared."*
+
+**So: read the options, send them all back with their `id`s, and append the new one without
+one.** Unchanged options keep their identity, every stored value survives, and the new
+option is the only thing created.
+
+```sh
+gh api graphql -f query='
+query { organization(login: "beinsiculous") { projectV2(number: 1) {
+  field(name: "Sprint") { ... on ProjectV2SingleSelectField {
+    id options { id name color description } } } } } }'
+```
+
+Then one mutation carrying **every** option — existing ones with their `id`, the new one
+without:
+
+```
+mutation { updateProjectV2Field(input: {fieldId: "PVTSSF_…", singleSelectOptions: [
+  {id: "1c8c4bbc", name: "Gates That Bite",  color: BLUE,  description: "…"},
+  {id: "d2e140cb", name: "One Truth, One Place", color: GREEN, description: "…"},
+  {name: "The New Sprint", color: GRAY, description: "…"}
+]}) { projectV2Field { ... on ProjectV2SingleSelectField { options { id name } } } } }
+```
+
+`color` and `description` are **non-null**: omit either on an existing option and you
+rewrite it to empty. Send back exactly what you read.
+
+Renaming or removing an option is the same call — keep the `id`, change the `name`, or drop
+the entry. **With the `id` kept, a rename no longer clears anything**; it is dropping the id,
+not changing the name, that does the damage.
+
+**Verify, every time**, because the failure is silent: count the items carrying a `Sprint`
+before and after, and confirm the pre-existing option ids came back unchanged in the
+response. If ids were regenerated, the values are already gone — restore them from a
+snapshot with the aliased mutation above.
+
+*Corrected 2026-08-31. This section previously said only that **renaming** an option
+cleared its values, and prescribed a plain read-merge-write with no ids — which is the
+wiping call itself. It wiped all 85 values on one run and all 95 on the next, both
+recovered from snapshots. Verified by adding and removing a probe option with ids passed:
+21 options, 0 ids regenerated, 0 of 103 values cleared, in both directions.*
 
 Milestone work is REST (`gh api repos/{owner}/{repo}/milestones`) and unaffected by the
 GraphQL secondary limit — if the board is throttled, the milestone half can still proceed.

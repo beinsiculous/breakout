@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Adversarial review loop between Claude Code and the kimi CLI.
 #
-#   adversarial-review.sh plan <task-spec.md> --author=claude|kimi
-#   adversarial-review.sh code <changes.diff> --author=claude|kimi
+#   adversarial-review.sh plan <task-spec.md> --author=claude|kimi [--reviewer=claude|kimi|gemini]
+#   adversarial-review.sh code <changes.diff> --author=claude|kimi [--reviewer=claude|kimi|gemini]
 #
-# One agent authors, the other reviews (whoever is not --author). Exactly one
-# rebuttal round. All outputs land in review/ (gitignored transients):
+# One agent authors, another reviews: the counterpart by default (whoever is not
+# --author), or the reviewer named — never the author's own vendor. Exactly one
+# rebuttal round. All outputs land in review/headless/, this driver's own subject
+# directory (gitignored transients), which it clears at start and never looks
+# outside of — other subjects under review/ belong to other sessions:
 #
 #   plan mode: plan.md -> review-1.md -> rebuttal-1.md [+ plan-v2.md if revised]
 #   code mode: draft.diff (copy of input) -> review-1.md -> rebuttal-1.md
@@ -24,29 +27,32 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
-REVIEW_DIR="$REPO_ROOT/review"
+REVIEW_DIR="$REPO_ROOT/review/headless"
 REVISED_MARKER='=== REVISED PLAN ==='
 # shellcheck source=lib/headless-agent.sh
 . "$SCRIPT_DIR/lib/headless-agent.sh"
 
 usage() {
     cat >&2 <<USAGE
-Usage: $(basename "$0") <plan|code> <input-path> --author=claude|kimi
+Usage: $(basename "$0") <plan|code> <input-path> --author=claude|kimi [--reviewer=claude|kimi|gemini]
 
   plan mode: <input-path> is a task spec; the author drafts a plan first.
   code mode: <input-path> is a diff; the diff itself is the draft.
-  --author   who authors/rebuts; the other agent reviews.
+  --author    who authors/rebuts.
+  --reviewer  who reviews; defaults to the other of claude/kimi, and may be
+              gemini (the Antigravity CLI, agy). Never the author's own vendor.
 USAGE
     exit 1
 }
 
 # --- argument parsing --------------------------------------------------------
 
-MODE="${1:-}"; INPUT="${2:-}"; AUTHOR=""
+MODE="${1:-}"; INPUT="${2:-}"; AUTHOR=""; REVIEWER=""
 shift 2 2>/dev/null || usage
 for arg in "$@"; do
     case "$arg" in
         --author=claude|--author=kimi) AUTHOR="${arg#--author=}" ;;
+        --reviewer=claude|--reviewer=kimi|--reviewer=gemini) REVIEWER="${arg#--reviewer=}" ;;
         *) echo "error: unknown argument '$arg'" >&2; usage ;;
     esac
 done
@@ -55,14 +61,25 @@ done
 [[ -n "$AUTHOR" ]] || usage
 [[ -f "$INPUT" ]] || { echo "error: input file not found: $INPUT" >&2; exit 1; }
 
-if [[ "$AUTHOR" == "claude" ]]; then REVIEWER="kimi"; else REVIEWER="claude"; fi
+if [[ -z "$REVIEWER" ]]; then
+    if [[ "$AUTHOR" == "claude" ]]; then REVIEWER="kimi"; else REVIEWER="claude"; fi
+fi
+[[ "$REVIEWER" != "$AUTHOR" ]] || { echo "error: the reviewer must be a different vendor from the author ($AUTHOR)" >&2; exit 1; }
 
-command -v claude >/dev/null || { echo "error: 'claude' not on PATH" >&2; exit 1; }
-[[ -n "$(headless_kimi_binary)" ]] || { echo "error: kimi not on PATH (set KIMI_BIN)" >&2; exit 1; }
+# Preflight only what will actually run.
+preflight() {
+    case "$1" in
+        kimi)   [[ -n "$(headless_kimi_binary)" ]] || { echo "error: kimi not on PATH (set KIMI_BIN)" >&2; exit 1; } ;;
+        gemini) [[ -n "$(headless_agy_binary)" ]] || { echo "error: agy not on PATH (set AGY_BIN)" >&2; exit 1; } ;;
+        *)      command -v "$1" >/dev/null || { echo "error: '$1' not on PATH" >&2; exit 1; } ;;
+    esac
+}
+preflight "$AUTHOR"
+preflight "$REVIEWER"
 mkdir -p "$REVIEW_DIR"
 
 if compgen -G "$REVIEW_DIR/*.md" >/dev/null; then
-    echo "note: overwriting previous run's files in review/" >&2
+    echo "note: overwriting previous run's files in review/headless/" >&2
 fi
 rm -f "$REVIEW_DIR"/plan.md "$REVIEW_DIR"/plan-v*.md "$REVIEW_DIR"/review-*.md \
       "$REVIEW_DIR"/rebuttal-*.md "$REVIEW_DIR"/draft.diff
@@ -72,10 +89,11 @@ rm -f "$REVIEW_DIR"/plan.md "$REVIEW_DIR"/plan-v*.md "$REVIEW_DIR"/review-*.md \
 # invoke <claude|kimi>: prompt on stdin, response text on stdout. The prompt lands in a file on
 # the way through, because past a certain size it can no longer be passed to kimi as an argv
 # argument and the library hands it over on disk instead.
+trap 'rm -f "$REVIEW_DIR"/.driver-prompt.$$' EXIT
 invoke() {
     local prompt_tmp="$REVIEW_DIR/.driver-prompt.$$" status=0
     cat > "$prompt_tmp"
-    if run_headless_agent "$1" "$prompt_tmp" "$REVIEW_DIR"; then status=0; else status=$?; fi
+    if run_headless_agent "$1" "$prompt_tmp" "$REVIEW_DIR" "$REPO_ROOT"; then status=0; else status=$?; fi
     rm -f "$prompt_tmp"
     return "$status"
 }
@@ -104,7 +122,7 @@ else
     DRAFT="$REVIEW_DIR/draft.diff"
     DRAFT_LABEL="DIFF"
 
-    step "1/3" "code mode: diff is the draft, copying $INPUT -> review/draft.diff"
+    step "1/3" "code mode: diff is the draft, copying $INPUT -> review/headless/draft.diff"
     cp "$INPUT" "$DRAFT"
 fi
 
@@ -163,4 +181,4 @@ rm -f "$REVIEW_DIR/rebuttal-1.raw"
 
 echo >&2
 echo "Done. Author: $AUTHOR, reviewer: $REVIEWER. Outputs:" >&2
-ls -1 "$REVIEW_DIR" | grep -v '^\.gitkeep$' | sed 's|^|  review/|' >&2
+ls -1 "$REVIEW_DIR" | grep -E '\.(md|diff)$' | sed 's|^|  review/headless/|' >&2

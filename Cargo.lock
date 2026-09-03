@@ -383,7 +383,6 @@ dependencies = [
  "bytemuck",
  "glam",
  "serde",
- "thiserror 2.0.18",
  "web-time",
 ]
 
@@ -699,6 +698,7 @@ dependencies = [
  "log",
  "physics",
  "renderer",
+ "serde_json",
  "ui",
  "winit",
 ]

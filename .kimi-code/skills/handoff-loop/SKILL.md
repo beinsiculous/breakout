@@ -27,9 +27,19 @@ its tokens on the typing, and no model reviews its own work.
    The batches are the unit of work: each names its files, its target shapes,
    which gates apply (mechanically — "if the diff touches a file under these
    crate roots, run X"), and what it deliberately leaves out.
-2. Review it with **both** reviewers, each on its own file, adjudicate each
-   on its own, write the rebuttal, revise, repeat until the user calls it
-   settled. Record decisions in the plan itself; the rebuttals explain them.
+2. **All three models are in on every plan: the planner drafts, the other two
+   review.** The planner writes the first draft (the user's ruling, Sep 3
+   2026: the draft is one voice, the feedback is two), then the counterpart
+   reviewer AND the executor's CLI each review it in plan mode, each on its
+   own file (`review-N.md` and `review-N-<reviewer>.md`), dispatched together
+   on the same snapshot. The executor reviews because it will build the
+   thing — it sees the shapes it would have to type, and its objections are
+   cheaper here than in a report marked INCOMPLETE. Adjudicate each review
+   on its own, write one rebuttal covering both, revise, repeat until the
+   user calls it settled. Record decisions in the plan itself; the rebuttals
+   explain them. The same three-model rule applies to every batch-section
+   correction in step 4: a correction over the hook's threshold goes to both
+   reviewers in code mode before it commits.
 3. Every correction that lands later — a dead-API list that grew, a ruling
    that changed during a review — goes **into the batch that will act on it**,
    never into a side section. The executor reads one section; anything filed

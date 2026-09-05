@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: Human-in-the-loop adversarial review between Claude Code and kimi-cli. The interactive session agent authors (plan or diff) collaboratively with the user; the counterpart CLI is invoked headlessly as the adversarial reviewer. Use when the user asks for an adversarial review of a plan or a change, or invokes /adversarial-review. Modes - plan (draft and defend an implementation plan) and code (review the working diff).
+description: Human-in-the-loop adversarial review between Claude Code and Kimi Code CLI. The interactive session agent authors (plan or diff) collaboratively with the user; the counterpart CLI is invoked headlessly as the adversarial reviewer. Use when the user asks for an adversarial review of a plan or a change, or invokes /adversarial-review. Modes - plan (draft and defend an implementation plan) and code (review the working diff).
 ---
 
 # Adversarial Review (interactive, human-in-the-loop)

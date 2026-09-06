@@ -63,7 +63,11 @@ not commit", "report INCOMPLETE rather than stop silently"), the gates with
 their mechanical conditions, the standing rules from earlier batches (show the
 grep for every deletion; before deleting the only test of an API, check the
 consumers; a gate an earlier batch introduced — a tag gate, a games script —
-applies to every later one), and the report shape you want back — which must
+applies to every later one), and the report shape you want back. **The report
+is one file at one path: `review/<subject>/report-<batch>.md`**, named in the
+handoff — the executor finishes every batch by writing it there and nowhere
+else (batch 4's executor saved three byte-identical copies, one under a wrong
+subject directory; the planner had to find and delete two). The report must
 end with the `git status --porcelain` of the batch scope and the
 `git diff --cached --stat` tail, so a finished batch is distinguishable from
 an abandoned one.
@@ -77,7 +81,9 @@ prefer to wait.
 
 ## 3. Take the result back
 
-1. **Reconcile before anything else.** Compare the report's `--stat` tail with
+1. **Reconcile before anything else.** The report is `review/<subject>/report-<batch>.md`;
+   if the executor left copies elsewhere, delete them first so one file is the
+   record. Compare the report's `--stat` tail with
    the actual `git diff --cached --stat`, and run `git status --porcelain --
    <batch scope>`: nothing untracked (`??`) and nothing modified-but-unstaged
    (` M`). A mismatch means an abandoned or half-staged batch: do not review

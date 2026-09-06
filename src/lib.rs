@@ -52,6 +52,10 @@ pub fn game_config(asset_base: &str) -> GameConfig {
 }
 
 impl Game for BreakoutGame {
+    fn register_achievements(&self, achievements: &mut AchievementManager, _strings: &Strings) {
+        achievements::register_all(achievements);
+    }
+
     fn init(&mut self, ctx: &mut GameContext) {
         // Resolve against the configured asset base so the same relative
         // path works natively (game dir) and on the web (VFS keys).
@@ -59,8 +63,6 @@ impl Game for BreakoutGame {
         if let Ok(font) = ctx.ui.load_font_file(&font_path.to_string_lossy()) {
             ctx.ui.set_default_font(font);
         }
-
-        achievements::register_all(ctx.achievements);
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
         self.tex_id = tex.id;

@@ -33,7 +33,7 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 - `menu.rs` — menu input handlers + `start_game()` (the match-start reset)
 - `drawing.rs` — all UI (MenuPanel menus, HUD, game-over panel, pause overlay)
 - `effects.rs` — particle burst configs; `chaos_theme.rs` — Normal-mode palette overrides on the engine's `ChaosTheme`
-- `achievements.rs` — definitions, registration, win-unlock logic
+- `achievements.rs` — definitions, registration (through `register_achievements()`, which the engine calls before the window opens; `cargo run -- --achievements-manifest <path>` exports the list), win-unlock logic
 
 **The game steps physics itself.** `BreakoutGame` owns a `PhysicsSystem` (`PhysicsConfig::top_down()`, no gravity) and calls `self.physics.update(&mut ctx.world, ctx.delta_time)` inside `update_gameplay()`. Collision events are drained ONCE per frame via `take_collision_events()` into an owned `Vec<CollisionData>`, and every consumer (paddle hits, brick hits, pickup catches, missed pickups, ball loss) reads that shared slice — a second take in the same frame would return empty. The pause gate sits above the physics step: while `PauseMenu` is active the frame ends early (no physics, no input, grid re-emitted with dt 0 so the frozen scene stays visible).
 

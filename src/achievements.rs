@@ -1,6 +1,7 @@
 //! Breakout-specific achievement definitions and unlock logic.
 //!
-//! Registered once in `init()`. Win-related achievements unlock from
+//! Registered through `Game::register_achievements` — the engine calls it before the window
+//! opens, which is what lets `--achievements-manifest` export the list with no GPU. Win-related achievements unlock from
 //! `check_win_condition`; the combo achievement unlocks live from
 //! `check_brick_hits` the moment the volley reaches `COMBO_TARGET`.
 
@@ -34,7 +35,7 @@ pub(crate) const DISPLAY_SECTIONS: &[(&str, &[&str])] = &[
         &[COMBO_VOLLEY, LAST_LIFE]),
 ];
 
-/// Register every Breakout achievement. Call once from `Game::init`.
+/// Register every Breakout achievement. Call once from `Game::register_achievements`.
 pub(crate) fn register_all(mgr: &mut AchievementManager) {
     mgr.register(Achievement::new(CLEAR_NORMAL,
         "Demolition Crew",

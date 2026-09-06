@@ -84,7 +84,7 @@ impl BreakoutGame {
             y += 22.0;
             for id in *ids {
                 let is_unlocked = ctx.achievements.is_unlocked(id);
-                // Registry always has entries for these ids (registered in init).
+                // Registry always has entries for these ids (registered in `register_achievements`).
                 let Some(ach) = ctx.achievements.get(id) else { continue };
 
                 let (marker, name_color) = if is_unlocked {

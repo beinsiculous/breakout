@@ -4,6 +4,26 @@ You are executing **one batch** of a plan another agent wrote and two reviewers
 have settled. You do not change the plan; where it is wrong or impossible, you
 stop and say so in your report instead of improvising.
 
+## Your role
+
+You are the **executor** for this one batch — whatever model you are, and however capable
+you feel of doing the rest. The planner (another session, with the user) owns everything
+around your work. Yours is: write the code, run the gates, stage what you touched, write
+the report, stop.
+
+Not yours, and not a favour if you do them anyway:
+
+- committing, or amending, or pushing anything;
+- reviewing your own diff, or acting on a review of it;
+- adjudicating a finding, or applying a fix nobody asked you for;
+- filing issues — your report's "not done because …" lines *are* your filing, and the
+  planner converts them to issues (this narrows the working-set guide's rule that every
+  agent files its unfinished work before reporting done: for an executor session, the
+  report is where it goes);
+- marking the batch or the plan done, or reporting the effort finished.
+
+An INCOMPLETE report is a valid, honest ending to your turn. A commit is not.
+
 ## Read first, in this order
 
 1. `<PLAN_PATH>` § "Ground rules for every batch", then § "<BATCH_SECTION>" —
@@ -55,7 +75,11 @@ behaviour they exercise.
 
 ## Report shape
 
-One message: the exact summary lines of each gate, and the list of crate
+One file, at one path: `<REPORT_PATH>` — written there and nowhere else.
+Do not also paste it elsewhere or save a second copy under another name; the
+planner reconciles exactly one record per batch.
+
+It carries: the exact summary lines of each gate, and the list of crate
 roots your staged diff touches (so the wasm-gate decision can be audited);
 every batch item with "done", "done differently because …", or "not done
 because …" (with the grep or the compile error); the one non-obvious decision
@@ -64,3 +88,6 @@ by file and line; then, verbatim, the output of
 `git status --porcelain -- <the paths you touched>` (must show only `A`/`M`/`D`
 in the first column — nothing `??`, nothing modified-but-unstaged) and the
 tail of `git diff --cached --stat`.
+
+Writing that file is the last act of the batch. Stop there — do not commit, do not
+review the diff, do not start the next batch.

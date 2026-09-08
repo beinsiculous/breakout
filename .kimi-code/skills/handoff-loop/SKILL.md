@@ -18,6 +18,25 @@ Why it works: the expensive model spends its tokens on the decisions that
 compound (the plan, what a finding means, what to keep), the executor spends
 its tokens on the typing, and no model reviews its own work.
 
+## If you were given a handoff
+
+A handoff path in your prompt — `review/<subject>/handoff-<batch>.md` — makes this
+session the **executor**, not the planner, whichever model you are. The rest of this
+skill is written for the planner: sections 1, 3 and 4 are theirs, and so is the writing
+of a handoff in section 2. Your contract is `prompts/handoff-batch.md` and the handoff
+file itself, and it comes down to three rules:
+
+- Stage everything you touched, new files included. **Do not commit.**
+- Write one report, at the one path the handoff names
+  (`review/<subject>/report-<batch>.md`), and nowhere else.
+- Stop there. You do not review your own diff, adjudicate findings, file issues (your
+  report's "not done because …" lines are the filing; the planner converts them), mark
+  the batch or plan done, or report the effort finished.
+
+Reporting INCOMPLETE is a valid ending; a commit is not. Where the handoff file and this
+skill disagree for a batch already in flight, the handoff file wins — it was written
+against the template in force when the batch went out.
+
 ## 1. Plan
 
 1. Draft in your harness's plan mode with the user (`adversarial-review` §
@@ -63,7 +82,11 @@ not commit", "report INCOMPLETE rather than stop silently"), the gates with
 their mechanical conditions, the standing rules from earlier batches (show the
 grep for every deletion; before deleting the only test of an API, check the
 consumers; a gate an earlier batch introduced — a tag gate, a games script —
-applies to every later one), and the report shape you want back — which must
+applies to every later one), and the report shape you want back. **The report
+is one file at one path: `review/<subject>/report-<batch>.md`**, named in the
+handoff — the executor finishes every batch by writing it there and nowhere
+else (batch 4's executor saved three byte-identical copies, one under a wrong
+subject directory; the planner had to find and delete two). The report must
 end with the `git status --porcelain` of the batch scope and the
 `git diff --cached --stat` tail, so a finished batch is distinguishable from
 an abandoned one.
@@ -77,7 +100,9 @@ prefer to wait.
 
 ## 3. Take the result back
 
-1. **Reconcile before anything else.** Compare the report's `--stat` tail with
+1. **Reconcile before anything else.** The report is `review/<subject>/report-<batch>.md`;
+   if the executor left copies elsewhere, delete them first so one file is the
+   record. Compare the report's `--stat` tail with
    the actual `git diff --cached --stat`, and run `git status --porcelain --
    <batch scope>`: nothing untracked (`??`) and nothing modified-but-unstaged
    (` M`). A mismatch means an abandoned or half-staged batch: do not review
@@ -160,6 +185,9 @@ instead of an impression, and the record the next effort reads.
 
 - The planner never writes skip trailers and never commits an unreviewed
   diff over the hook's threshold; the executor never commits at all.
+- The executor stays an executor. Whichever model reads the handoff, it does
+  not commit, review its own diff, adjudicate, or declare the batch done —
+  the loop's whole property is that no model reviews its own work.
 - A finding is adjudicated, not obeyed: both reviewers have asked for tests
   that reconstruct production logic, both have called live API dead, and one
   has asked for a gate that had already run. Verify the claim against the

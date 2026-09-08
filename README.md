@@ -91,6 +91,8 @@ gameplay tuning constants live in `src/constants.rs`; entities are spawned
 from those values in `src/spawning.rs`; brick layouts are edited directly in
 the level scenes.
 
+The same build runs in the browser at [beinsiculous.com/playground/breakout/](https://beinsiculous.com/playground/breakout/): the game inside the editor, layout only — the rules are compiled in and nothing you change there persists.
+
 ## Project Layout
 
 ```

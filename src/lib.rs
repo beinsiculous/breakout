@@ -4,7 +4,8 @@
 //! entry points stay thin: `main.rs` (native window, filesystem saves,
 //! optional editor) and `web_entry.rs` (wasm-bindgen start: fetch assets,
 //! then the same `run_game`). This split also keeps `editor_integration`
-//! out of the library — editor wiring lives in `main.rs` only.
+//! behind the `editor` feature in both entry points — `main.rs` for the native
+//! window, `web_entry.rs` for the browser's editor bundle.
 
 mod achievements;
 mod chaos_theme;

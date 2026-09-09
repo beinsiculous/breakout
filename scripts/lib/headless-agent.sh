@@ -18,6 +18,12 @@
 #              print UI". Two dialects really do exist, so both live here, in the one place that
 #              knows about invoking these CLIs at all. Which one is in hand is decided by asking
 #              the binary, not by its name — kimi-cli can be installed AS `kimi`.
+#   codex:     OpenAI's CLI, pinned to the Astra model (the roster's artist and UI reviewer — the
+#              `roles` skill). The prompt goes over stdin to `codex exec -` (no argv limit) and the
+#              review is written to a per-process file the arm cats to stdout, because `codex exec`
+#              interleaves its own event log with the model's text on stdout. Screenshots ride as
+#              `-i <png>` (the HEADLESS_IMAGES array, set by request-review.sh --image — an array,
+#              not a string, so a path with a space in it survives the crossing).
 #   gemini:    the Antigravity CLI, `agy`, pinned to a Gemini model. The name is the vendor, not
 #              the binary, because the rule it serves is "a different vendor's model reviews": agy
 #              also offers Claude models, and this arm must never pick one. The prompt goes over
@@ -45,6 +51,23 @@
 #          enforce), its custom agents' `tools:` list (a hint — run_command executed when forced),
 #          --dangerously-skip-permissions (turns that hint into full privilege), and bare headless
 #          mode (writes inside the workspace are auto-allowed).
+#   codex  writes ENFORCED by its own sandbox (`-s read-only` is what the `:read-only` permissions
+#          profile extends; a write to /tmp came back "Read-only file system", 2026-09-08). Reads
+#          are NOT fenced by `-C` or by read-only — the first probe read ../fortknight/CLAUDE.md
+#          and /etc/hostname from -C insiculous_2d (Astra's own plan review of the roster, F1,
+#          and kimi's F2). What fences them is a named permissions profile the arm passes as -c
+#          overrides: every sibling clone of <repo-dir> (each git repo under its parent, one and
+#          two levels down, other than <repo-dir> itself) is `deny`, and Codex's policy refuses
+#          the command before it runs ("path denied by active permission policy") — probed with
+#          fortknight, deion_assets and games/pong denied from -C insiculous_2d: all three refused,
+#          the repo's own CLAUDE.md read, /etc/hostname read. Two shapes were rejected on the
+#          way: `"/"="deny"` denies the codex binary its own helper (bwrap execvp fails), and a
+#          deny on the parent directory blocks Codex's own read of the workspace AGENTS.md at
+#          session start, `:workspace_roots`="read" notwithstanding — deny outranks read, so the
+#          deny must name the siblings, never an ancestor of the repo. From the working-set root
+#          the nested clones are inside <repo-dir> and stay readable, which the scope note says.
+#          Outside the working set (/etc, the home directory's dotfiles) reads are unfenced, as
+#          for kimi: by instruction only.
 #   claude NOT scoped: `claude -p` runs in the caller's directory with read access, as it did
 #          before these scripts shared this file. Moving it is a change to how claude-authored runs
 #          see the project — worth doing deliberately, not as a side effect. <repo-dir> is unused
@@ -83,6 +106,14 @@ HEADLESS_AGENT_ARGV_LIMIT="${HEADLESS_AGENT_ARGV_LIMIT:-100000}"
 # slug (see the header); `agy models` lists them.
 HEADLESS_AGY_MODEL="${HEADLESS_AGY_MODEL:-gemini-3.8-flash-high}"
 
+# Pinned for the same reason as agy's model: the roster names Astra, not "whatever Codex defaults
+# to this week". `codex exec -m` takes the slug; the TUI's model picker lists them.
+HEADLESS_CODEX_MODEL="${HEADLESS_CODEX_MODEL:-gpt-6-astra}"
+
+# Screenshots for the codex arm, set by the caller as a bash ARRAY (request-review.sh --image);
+# the library is sourced, so the array crosses the function boundary intact.
+declare -a HEADLESS_IMAGES=()
+
 # The kimi agent file, resolved from this file's own location so each repo's copy finds its own.
 HEADLESS_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HEADLESS_KIMI_AGENT="${HEADLESS_KIMI_AGENT:-$HEADLESS_LIB_DIR/../../prompts/kimi-headless-agent.md}"
@@ -96,6 +127,59 @@ headless_kimi_binary() {
 # The Antigravity CLI. Override with AGY_BIN.
 headless_agy_binary() {
     printf '%s' "${AGY_BIN:-$(command -v agy || true)}"
+}
+
+# OpenAI's Codex CLI. Override with CODEX_BIN.
+headless_codex_binary() {
+    printf '%s' "${CODEX_BIN:-$(command -v codex || true)}"
+}
+
+# headless_codex_deny_overrides <repo-dir>
+#
+# The -c overrides that fence Codex's reads to <repo-dir>: a permissions profile extending
+# :read-only with a `deny` on every other clone in reach — each directory holding a .git up to
+# three levels under <repo-dir>'s parent AND under its grandparent, other than <repo-dir> itself
+# and its ancestors. Two levels up because a game repo's parent is `games/`, whose siblings are
+# only the other games; the private clones are its grandparent's children (Astra's code review
+# of the roster, F1). Named clones, never an ancestor of the repo (see the header: an ancestor
+# deny takes the workspace down with it). Printed one argument per line for the caller's mapfile.
+headless_codex_deny_overrides() {
+    local repo_dir="$1" parent grandparent clone rules="" quoted found codex_home
+    repo_dir="$(realpath -m -- "$repo_dir")"
+    parent="$(dirname -- "$repo_dir")"
+    grandparent="$(dirname -- "$parent")"
+    # The directory the codex binary really lives in: a deny on any ancestor of it makes
+    # bwrap unable to exec Codex's own sandbox helper (from the working-set root the
+    # grandparent is the home directory, and ~/.nvm is a git clone — the arm denied it and
+    # every run died with "execvp … Permission denied", 2026-09-08).
+    codex_home="$(realpath -m -- "$(headless_codex_binary)")"
+    # The enumeration must succeed or the arm must not run: a scan that died halfway would
+    # leave an EMPTY deny list behind a scope note claiming the fence is up, which is the
+    # fail-open the neighbouring arms refuse (kimi's code review of the roster, F1). find's
+    # stderr stays visible for the same reason.
+    if ! found="$(find "$parent" "$grandparent" -mindepth 2 -maxdepth 3 -name .git -prune)"; then
+        echo "error: could not enumerate the clones beside $repo_dir, so the codex read fence cannot be built" >&2
+        return 1
+    fi
+    while IFS= read -r clone; do
+        [ -n "$clone" ] || continue
+        # The repo itself, any ancestor of it, and any clone nested inside it stay readable
+        # (from the working-set root the nested clones are inside, and the scope note says so).
+        case "$repo_dir" in "$clone"|"$clone"/*) continue ;; esac
+        case "$clone" in "$repo_dir"/*) continue ;; esac
+        # Tooling checkouts stay readable: an ancestor of the codex binary (above), and any
+        # dot-directory clone under the home directory (~/.nvm, ~/.oh-my-zsh — never a
+        # household's data, which lives in a named project).
+        case "$codex_home" in "$clone"/*) continue ;; esac
+        case "$(basename -- "$clone")" in .*) continue ;; esac
+        quoted="${clone//\\/\\\\}"; quoted="${quoted//\"/\\\"}"
+        rules="${rules:+$rules, }\"$quoted\"=\"deny\""
+    done < <(printf '%s\n' "$found" | sed 's|/\.git$||' | sort -u)
+    if [ -z "$rules" ]; then
+        echo "note: no other clone found beside $repo_dir, so the codex profile denies nothing beyond read-only" >&2
+    fi
+    printf '%s\n' '-c' 'default_permissions="adversarial_reviewer"'
+    printf '%s\n' '-c' "permissions.adversarial_reviewer={extends=\":read-only\", filesystem={$rules}}"
 }
 
 # "legacy" (kimi-cli, prompt on stdin) or "current" (kimi-code, prompt in argv). Asked of the
@@ -195,7 +279,7 @@ headless_read_scope_note() {
     [ -z "$nested" ] || echo "      including the nested clones: $nested" >&2
 }
 
-# run_headless_agent <claude|kimi|gemini> <prompt-file> <scope-dir> <repo-dir>
+# run_headless_agent <claude|kimi|gemini|codex> <prompt-file> <scope-dir> <repo-dir>
 #
 # Runs the prompt in <prompt-file> and writes the response to stdout. <scope-dir> is where the
 # agent runs — the subject directory, where its own working files land. <repo-dir> is the tree it
@@ -206,6 +290,7 @@ run_headless_agent() {
     local agent="$1" prompt_file="$2" scope_dir="$3" repo_dir="$4"
     local prompt_bytes kimi_binary kimi_dialect handover_name status
     local agy_binary ndjson agy_status agy_response
+    local codex_binary codex_output codex_log image codex_args
     # Every arm that cd's into <scope-dir> must still find the prompt where the caller left it.
     prompt_file="$(realpath -m -- "$prompt_file")"
 
@@ -296,6 +381,40 @@ run_headless_agent() {
             fi
             printf '%s\n' "$agy_response"
             rm -f "$ndjson"
+            ;;
+        codex)
+            codex_binary="$(headless_codex_binary)"
+            [ -n "$codex_binary" ] || { echo "error: codex not on PATH (set CODEX_BIN)" >&2; return 1; }
+            realpath -m -- / >/dev/null 2>&1 || { echo "error: 'realpath -m' not available; the codex arm's deny list needs GNU realpath" >&2; return 1; }
+            # Build the fence before announcing it: a fence that cannot be built stops the run.
+            mapfile -t codex_args < <(headless_codex_deny_overrides "$repo_dir") || return 1
+            [ "${#codex_args[@]}" -eq 4 ] || { echo "error: the codex read fence could not be built (see above)" >&2; return 1; }
+            headless_read_scope_note "codex ($HEADLESS_CODEX_MODEL; the other clones denied by permissions profile)" "$repo_dir"
+            for image in "${HEADLESS_IMAGES[@]}"; do
+                [ -f "$image" ] || { echo "error: image not found: $image" >&2; return 1; }
+                codex_args+=(-i "$(realpath -m -- "$image")")
+            done
+            # Named for THIS process, for the same reason as kimi's handover file above. The
+            # event log goes to its own file: on failure it is the record, on success it is noise.
+            codex_output="$scope_dir/.codex-output.$$.md"
+            codex_log="$scope_dir/.codex-log.$$.txt"
+            # --ephemeral: no session written to ~/.codex for a review. --skip-git-repo-check:
+            # the subject directory is gitignored transients, not a repo of its own. --strict-config:
+            # a permissions key this Codex does not know must fail loud, not fence nothing.
+            if ! ( cd "$scope_dir" && timeout "$HEADLESS_AGENT_TIMEOUT" \
+                    "$codex_binary" exec --ephemeral --skip-git-repo-check --strict-config \
+                        -C "$repo_dir" -m "$HEADLESS_CODEX_MODEL" --color never \
+                        "${codex_args[@]}" -o "$codex_output" - < "$prompt_file" > "$codex_log" 2>&1 ); then
+                echo "error: codex exited non-zero; its event log is kept at $codex_log" >&2
+                tail -n 5 "$codex_log" >&2
+                return 1
+            fi
+            if [ ! -s "$codex_output" ]; then
+                echo "error: codex produced no review; its event log is kept at $codex_log" >&2
+                return 1
+            fi
+            cat "$codex_output"
+            rm -f "$codex_output" "$codex_log"
             ;;
         *)
             echo "error: unknown agent '$agent'" >&2

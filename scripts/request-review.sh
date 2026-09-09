@@ -30,11 +30,14 @@ PROMPTS_DIR="$REPO_ROOT/prompts"
 
 usage() {
     cat >&2 <<EOF
-Usage: $(basename "$0") <plan|code> <artifact-path> --reviewer=claude|kimi|gemini [--out=path]
+Usage: $(basename "$0") <plan|code> <artifact-path> --reviewer=claude|kimi|gemini|codex [--out=path] [--image=path ...]
 
   plan mode: artifact is a plan document (uses prompts/adversarial-plan-review.md)
   code mode: artifact is a diff        (uses prompts/adversarial-code-review.md)
-  --reviewer  which CLI critiques the artifact (gemini = the Antigravity CLI, agy)
+  --reviewer  which CLI critiques the artifact (gemini = the Antigravity CLI, agy; codex = Astra, the
+              artist and UI reviewer — for a plan or diff with a screen or an asset in it)
+  --image     a screenshot the reviewer should look at (codex only; repeatable) — the UI finding is
+              about what is on the screen, so hand it the screen
   --out       output file (default: review-N.md beside the artifact, N auto-incremented)
 
   The artifact must be under review/<subject>/ — see the header.
@@ -42,12 +45,13 @@ EOF
     exit 1
 }
 
-MODE="${1:-}"; ARTIFACT="${2:-}"; REVIEWER=""; OUT=""
+MODE="${1:-}"; ARTIFACT="${2:-}"; REVIEWER=""; OUT=""; IMAGES=()
 shift 2 2>/dev/null || usage
 for arg in "$@"; do
     case "$arg" in
-        --reviewer=claude|--reviewer=kimi|--reviewer=gemini) REVIEWER="${arg#--reviewer=}" ;;
+        --reviewer=claude|--reviewer=kimi|--reviewer=gemini|--reviewer=codex) REVIEWER="${arg#--reviewer=}" ;;
         --out=*) OUT="${arg#--out=}" ;;
+        --image=*) IMAGES+=("${arg#--image=}") ;;
         *) echo "error: unknown argument '$arg'" >&2; usage ;;
     esac
 done
@@ -55,9 +59,16 @@ done
 [[ "$MODE" == "plan" || "$MODE" == "code" ]] || usage
 [[ -n "$REVIEWER" ]] || usage
 [[ -f "$ARTIFACT" ]] || { echo "error: artifact not found: $ARTIFACT" >&2; exit 1; }
+for image in "${IMAGES[@]}"; do
+    [[ -f "$image" ]] || { echo "error: image not found: $image" >&2; exit 1; }
+done
+if [[ ${#IMAGES[@]} -gt 0 && "$REVIEWER" != "codex" ]]; then
+    echo "error: --image is for --reviewer=codex; the other reviewers take no images" >&2; exit 1
+fi
 case "$REVIEWER" in
     kimi)   [[ -n "$(headless_kimi_binary)" ]] || { echo "error: kimi not on PATH (set KIMI_BIN)" >&2; exit 1; } ;;
     gemini) [[ -n "$(headless_agy_binary)" ]] || { echo "error: agy not on PATH (set AGY_BIN)" >&2; exit 1; } ;;
+    codex)  [[ -n "$(headless_codex_binary)" ]] || { echo "error: codex not on PATH (set CODEX_BIN)" >&2; exit 1; } ;;
     *)      command -v "$REVIEWER" >/dev/null || { echo "error: '$REVIEWER' not on PATH" >&2; exit 1; } ;;
 esac
 
@@ -69,10 +80,10 @@ case "$SUBJECT_DIR" in
     *) echo "error: artifacts live in review/<subject>/ (got $ARTIFACT); mkdir review/<subject> and put it there" >&2; exit 1 ;;
 esac
 
-# Sweep what a killed run left behind — prompt temp files, kimi's handover, agy's raw output —
+# Sweep what a killed run left behind — prompt temp files, kimi's handover, agy's raw output, codex's output and log —
 # but only when the owning process is dead AND the file is over an hour old: two reviewers may
 # share a subject directory at once, and a PID can be reused by something long-lived.
-for leftover in "$SUBJECT_DIR"/.request-prompt.* "$SUBJECT_DIR"/.headless-prompt.* "$SUBJECT_DIR"/.agy-output.* "$SUBJECT_DIR"/.driver-prompt.*; do
+for leftover in "$SUBJECT_DIR"/.request-prompt.* "$SUBJECT_DIR"/.headless-prompt.* "$SUBJECT_DIR"/.agy-output.* "$SUBJECT_DIR"/.codex-output.* "$SUBJECT_DIR"/.codex-log.* "$SUBJECT_DIR"/.driver-prompt.*; do
     [[ -e "$leftover" ]] || continue
     owner="${leftover##*/.}"; owner="${owner#*.}"; owner="${owner%%.*}"
     if [[ "$owner" =~ ^[0-9]+$ ]] && ! kill -0 "$owner" 2>/dev/null && [[ -n "$(find "$leftover" -mmin +60 2>/dev/null)" ]]; then
@@ -133,6 +144,7 @@ trap 'rm -f "$PROMPT_TMP"' EXIT
 # so this used to exit 0 on every reviewer failure, telling the gate and the skill that a review
 # had succeeded while writing none. Fail-open at the process level, at the one point that exists
 # to make failure visible. The status is captured in the else branch, where it is the real one.
+HEADLESS_IMAGES=("${IMAGES[@]}")
 if run_headless_agent "$REVIEWER" "$PROMPT_TMP" "$SUBJECT_DIR" "$REPO_ROOT" > "$OUT"; then
     # Exit 0 with nothing to say is not a review either: a CLI that printed a blank line and
     # exited clean would otherwise be reported as a settled, finding-free review, and the empty

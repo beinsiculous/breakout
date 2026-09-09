@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Adversarial review loop between Claude Code and the kimi CLI.
 #
-#   adversarial-review.sh plan <task-spec.md> --author=claude|kimi [--reviewer=claude|kimi|gemini]
-#   adversarial-review.sh code <changes.diff> --author=claude|kimi [--reviewer=claude|kimi|gemini]
+#   adversarial-review.sh plan <task-spec.md> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex]
+#   adversarial-review.sh code <changes.diff> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex]
 #
 # One agent authors, another reviews: the counterpart by default (whoever is not
 # --author), or the reviewer named — never the author's own vendor. Exactly one
@@ -34,13 +34,14 @@ REVISED_MARKER='=== REVISED PLAN ==='
 
 usage() {
     cat >&2 <<USAGE
-Usage: $(basename "$0") <plan|code> <input-path> --author=claude|kimi [--reviewer=claude|kimi|gemini]
+Usage: $(basename "$0") <plan|code> <input-path> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex]
 
   plan mode: <input-path> is a task spec; the author drafts a plan first.
   code mode: <input-path> is a diff; the diff itself is the draft.
   --author    who authors/rebuts.
   --reviewer  who reviews; defaults to the other of claude/kimi, and may be
-              gemini (the Antigravity CLI, agy). Never the author's own vendor.
+              gemini (the Antigravity CLI, agy) or codex (Astra, the roster's
+              artist and UI reviewer). Never the author's own vendor.
 USAGE
     exit 1
 }
@@ -52,7 +53,7 @@ shift 2 2>/dev/null || usage
 for arg in "$@"; do
     case "$arg" in
         --author=claude|--author=kimi) AUTHOR="${arg#--author=}" ;;
-        --reviewer=claude|--reviewer=kimi|--reviewer=gemini) REVIEWER="${arg#--reviewer=}" ;;
+        --reviewer=claude|--reviewer=kimi|--reviewer=gemini|--reviewer=codex) REVIEWER="${arg#--reviewer=}" ;;
         *) echo "error: unknown argument '$arg'" >&2; usage ;;
     esac
 done

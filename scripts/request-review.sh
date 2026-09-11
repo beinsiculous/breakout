@@ -30,12 +30,14 @@ PROMPTS_DIR="$REPO_ROOT/prompts"
 
 usage() {
     cat >&2 <<EOF
-Usage: $(basename "$0") <plan|code> <artifact-path> --reviewer=claude|kimi|gemini|codex [--out=path] [--image=path ...]
+Usage: $(basename "$0") <plan|code> <artifact-path> --reviewer=claude|kimi|gemini|codex|deepseek [--out=path] [--image=path ...]
 
   plan mode: artifact is a plan document (uses prompts/adversarial-plan-review.md)
   code mode: artifact is a diff        (uses prompts/adversarial-code-review.md)
   --reviewer  which CLI critiques the artifact (gemini = the Antigravity CLI, agy; codex = Astra, the
-              artist and UI reviewer — for a plan or diff with a screen or an asset in it)
+              artist and UI reviewer — for a plan or diff with a screen or an asset in it; deepseek =
+              Claude Code pointed at DeepSeek's endpoint, a second quality reviewer, cheap enough for
+              every diff)
   --image     a screenshot the reviewer should look at (codex only; repeatable) — the UI finding is
               about what is on the screen, so hand it the screen
   --out       output file (default: review-N.md beside the artifact, N auto-incremented)
@@ -49,7 +51,7 @@ MODE="${1:-}"; ARTIFACT="${2:-}"; REVIEWER=""; OUT=""; IMAGES=()
 shift 2 2>/dev/null || usage
 for arg in "$@"; do
     case "$arg" in
-        --reviewer=claude|--reviewer=kimi|--reviewer=gemini|--reviewer=codex) REVIEWER="${arg#--reviewer=}" ;;
+        --reviewer=claude|--reviewer=kimi|--reviewer=gemini|--reviewer=codex|--reviewer=deepseek) REVIEWER="${arg#--reviewer=}" ;;
         --out=*) OUT="${arg#--out=}" ;;
         --image=*) IMAGES+=("${arg#--image=}") ;;
         *) echo "error: unknown argument '$arg'" >&2; usage ;;
@@ -69,6 +71,8 @@ case "$REVIEWER" in
     kimi)   [[ -n "$(headless_kimi_binary)" ]] || { echo "error: kimi not on PATH (set KIMI_BIN)" >&2; exit 1; } ;;
     gemini) [[ -n "$(headless_agy_binary)" ]] || { echo "error: agy not on PATH (set AGY_BIN)" >&2; exit 1; } ;;
     codex)  [[ -n "$(headless_codex_binary)" ]] || { echo "error: codex not on PATH (set CODEX_BIN)" >&2; exit 1; } ;;
+    deepseek) command -v claude >/dev/null || { echo "error: 'claude' not on PATH; the deepseek arm runs Claude Code" >&2; exit 1; }
+              headless_deepseek_key >/dev/null || exit 1 ;;
     *)      command -v "$REVIEWER" >/dev/null || { echo "error: '$REVIEWER' not on PATH" >&2; exit 1; } ;;
 esac
 

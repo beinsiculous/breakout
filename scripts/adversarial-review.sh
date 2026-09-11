@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Adversarial review loop between Claude Code and the kimi CLI.
 #
-#   adversarial-review.sh plan <task-spec.md> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex]
-#   adversarial-review.sh code <changes.diff> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex]
+#   adversarial-review.sh plan <task-spec.md> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex|deepseek]
+#   adversarial-review.sh code <changes.diff> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex|deepseek]
 #
 # One agent authors, another reviews: the counterpart by default (whoever is not
 # --author), or the reviewer named — never the author's own vendor. Exactly one
@@ -34,14 +34,15 @@ REVISED_MARKER='=== REVISED PLAN ==='
 
 usage() {
     cat >&2 <<USAGE
-Usage: $(basename "$0") <plan|code> <input-path> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex]
+Usage: $(basename "$0") <plan|code> <input-path> --author=claude|kimi [--reviewer=claude|kimi|gemini|codex|deepseek]
 
   plan mode: <input-path> is a task spec; the author drafts a plan first.
   code mode: <input-path> is a diff; the diff itself is the draft.
   --author    who authors/rebuts.
   --reviewer  who reviews; defaults to the other of claude/kimi, and may be
-              gemini (the Antigravity CLI, agy) or codex (Astra, the roster's
-              artist and UI reviewer). Never the author's own vendor.
+              gemini (the Antigravity CLI, agy), codex (Astra, the roster's
+              artist and UI reviewer) or deepseek (Claude Code pointed at
+              DeepSeek's endpoint). Never the author's own vendor.
 USAGE
     exit 1
 }
@@ -53,7 +54,7 @@ shift 2 2>/dev/null || usage
 for arg in "$@"; do
     case "$arg" in
         --author=claude|--author=kimi) AUTHOR="${arg#--author=}" ;;
-        --reviewer=claude|--reviewer=kimi|--reviewer=gemini|--reviewer=codex) REVIEWER="${arg#--reviewer=}" ;;
+        --reviewer=claude|--reviewer=kimi|--reviewer=gemini|--reviewer=codex|--reviewer=deepseek) REVIEWER="${arg#--reviewer=}" ;;
         *) echo "error: unknown argument '$arg'" >&2; usage ;;
     esac
 done
@@ -72,6 +73,9 @@ preflight() {
     case "$1" in
         kimi)   [[ -n "$(headless_kimi_binary)" ]] || { echo "error: kimi not on PATH (set KIMI_BIN)" >&2; exit 1; } ;;
         gemini) [[ -n "$(headless_agy_binary)" ]] || { echo "error: agy not on PATH (set AGY_BIN)" >&2; exit 1; } ;;
+        codex)  [[ -n "$(headless_codex_binary)" ]] || { echo "error: codex not on PATH (set CODEX_BIN)" >&2; exit 1; } ;;
+        deepseek) command -v claude >/dev/null || { echo "error: 'claude' not on PATH; the deepseek arm runs Claude Code" >&2; exit 1; }
+                  headless_deepseek_key >/dev/null || exit 1 ;;
         *)      command -v "$1" >/dev/null || { echo "error: '$1' not on PATH" >&2; exit 1; } ;;
     esac
 }

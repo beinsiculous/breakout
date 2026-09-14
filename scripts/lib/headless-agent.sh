@@ -30,6 +30,20 @@
 #              agy's NDJSON stdin (--input-format stream-json), which carried a 186 KB prompt
 #              intact, so there is no argv limit to work around; the review is the `result`
 #              event's response.
+#   deepseek:  Claude Code again, pointed at DeepSeek's Anthropic-compatible endpoint (claude
+#              2.1.268, 2026-09-11): `claude -p --bare` with ANTHROPIC_BASE_URL and ANTHROPIC_API_KEY
+#              bound to that one process and the model pinned. As for gemini, the name is the
+#              vendor: the harness is Claude Code, the judgment is DeepSeek's. --bare makes the auth
+#              STRICTLY the API key — probed against a local fake endpoint: only x-api-key crosses,
+#              a subscription login is never sent — and skips hooks, plugins and CLAUDE.md
+#              auto-discovery; --strict-mcp-config with no --mcp-config keeps every configured MCP
+#              server out of the reviewer's hands; --restricted ignores the user, project and local
+#              settings files, because --bare alone does not (DeepSeek's own code review of this
+#              arm, F3, and the probe that confirmed it). Claude Code does not know the model name, warns
+#              so on stderr (stdout stays the review) and assumes a 200k window unless
+#              CLAUDE_CODE_MAX_CONTEXT_TOKENS names DeepSeek's real one — the variable is the one
+#              that warning itself names, and with it set the warning's window sentence no longer
+#              prints (the end-to-end run of 2026-09-11).
 #
 # WHAT "READ-ONLY" MEANS, PER REVIEWER — each line below was proven by forcing tool calls by
 # name and then looking at the directory, not by asking the model what it had:
@@ -72,6 +86,18 @@
 #          before these scripts shared this file. Moving it is a change to how claude-authored runs
 #          see the project — worth doing deliberately, not as a side effect. <repo-dir> is unused
 #          on that path, and no comment in this tree should claim otherwise.
+#   deepseek tool set AND paths AND writes ENFORCED by Claude Code itself, in print mode: `--tools
+#          Read,Bash` is the whole function schema (this build has no Grep or Glob tool; forced to
+#          use Edit, Write, Grep and Glob the model reported no such tool), cwd is <repo-dir>, and a
+#          print-mode run cannot answer a permission question, so anything that would raise one is
+#          denied. Probed 2026-09-11 by forcing each by name: Read and grep/rg/cat of /etc/hostname,
+#          the home directory's dotfiles and a sibling clone — all refused as outside the working
+#          directory; touch, sed -i, tee, `>` redirection (inside the repo too), a `&&`-chained
+#          touch and `find -delete` — all refused; the two allow rules below admit grep and ls, and
+#          Claude Code's own read-only classification already admits rg and `git log`. A project
+#          settings file allowing Read(//etc/**) and Bash(cat:*) opened /etc/hostname to both tools
+#          without --restricted and to neither with it. From the working-set root the nested clones
+#          are inside <repo-dir> and readable, as for every arm.
 #
 # TWO PER-MACHINE FACTS ABOUT agy 1.1.24 that this file cannot fix (the adversarial-review skill
 # carries the setup):
@@ -110,6 +136,20 @@ HEADLESS_AGY_MODEL="${HEADLESS_AGY_MODEL:-gemini-3.8-flash-high}"
 # to this week". `codex exec -m` takes the slug; the TUI's model picker lists them.
 HEADLESS_CODEX_MODEL="${HEADLESS_CODEX_MODEL:-gpt-6-astra}"
 
+# Pinned for the same reason again. The roster names a DeepSeek model; DeepSeek's endpoint would
+# otherwise silently map a Claude model name onto whichever of its models it chooses.
+HEADLESS_DEEPSEEK_MODEL="${HEADLESS_DEEPSEEK_MODEL:-deepseek-flash}"
+HEADLESS_DEEPSEEK_BASE_URL="${HEADLESS_DEEPSEEK_BASE_URL:-https://api.deepseek.com/anthropic}"
+# DeepSeek's models carry a 1M window; Claude Code assumes 200k for a model it does not know and
+# would compact a long review prompt early.
+HEADLESS_DEEPSEEK_CONTEXT_TOKENS="${HEADLESS_DEEPSEEK_CONTEXT_TOKENS:-1000000}"
+# The key: DEEPSEEK_API_KEY in the environment (the name DeepSeek's own tooling reads), else this
+# file, which the `claude-ds` shell launcher shares. Never written into a settings file, where it
+# would apply to every Claude Code session on the machine instead of this one process.
+# ${HOME:-}: this file is sourced under `set -u`, and an environment without HOME (a unit, a cron
+# job) must still be able to run the other arms.
+HEADLESS_DEEPSEEK_KEY_FILE="${HEADLESS_DEEPSEEK_KEY_FILE:-${HOME:-}/.config/deepseek/api_key}"
+
 # Screenshots for the codex arm, set by the caller as a bash ARRAY (request-review.sh --image);
 # the library is sourced, so the array crosses the function boundary intact.
 declare -a HEADLESS_IMAGES=()
@@ -132,6 +172,17 @@ headless_agy_binary() {
 # OpenAI's Codex CLI. Override with CODEX_BIN.
 headless_codex_binary() {
     printf '%s' "${CODEX_BIN:-$(command -v codex || true)}"
+}
+
+# The DeepSeek key, or an error naming where it was looked for. Printed, never exported: the
+# caller binds it to the one process that needs it.
+headless_deepseek_key() {
+    local key="${DEEPSEEK_API_KEY:-}"
+    if [ -z "$key" ] && [ -s "$HEADLESS_DEEPSEEK_KEY_FILE" ]; then
+        key="$(tr -d '[:space:]' < "$HEADLESS_DEEPSEEK_KEY_FILE")"
+    fi
+    [ -n "$key" ] || { echo "error: no DeepSeek key: set DEEPSEEK_API_KEY or put it in $HEADLESS_DEEPSEEK_KEY_FILE" >&2; return 1; }
+    printf '%s' "$key"
 }
 
 # headless_codex_deny_overrides <repo-dir>
@@ -279,7 +330,7 @@ headless_read_scope_note() {
     [ -z "$nested" ] || echo "      including the nested clones: $nested" >&2
 }
 
-# run_headless_agent <claude|kimi|gemini|codex> <prompt-file> <scope-dir> <repo-dir>
+# run_headless_agent <claude|kimi|gemini|codex|deepseek> <prompt-file> <scope-dir> <repo-dir>
 #
 # Runs the prompt in <prompt-file> and writes the response to stdout. <scope-dir> is where the
 # agent runs — the subject directory, where its own working files land. <repo-dir> is the tree it
@@ -291,6 +342,7 @@ run_headless_agent() {
     local prompt_bytes kimi_binary kimi_dialect handover_name status
     local agy_binary ndjson agy_status agy_response
     local codex_binary codex_output codex_log image codex_args
+    local deepseek_key
     # Every arm that cd's into <scope-dir> must still find the prompt where the caller left it.
     prompt_file="$(realpath -m -- "$prompt_file")"
 
@@ -381,6 +433,30 @@ run_headless_agent() {
             fi
             printf '%s\n' "$agy_response"
             rm -f "$ndjson"
+            ;;
+        deepseek)
+            command -v claude >/dev/null || { echo "error: 'claude' not on PATH; the deepseek arm runs Claude Code against DeepSeek's endpoint" >&2; return 1; }
+            deepseek_key="$(headless_deepseek_key)" || return 1
+            headless_read_scope_note "deepseek (claude -p --bare, $HEADLESS_DEEPSEEK_MODEL; Read, and a Bash that print mode lets read but not write)" "$repo_dir"
+            # cwd is <repo-dir>, which is the fence: a print-mode run cannot answer the permission
+            # question that a read outside its directory, or any write, raises — so it is denied
+            # (the header carries the probes). --bare: auth is strictly the API key below, and
+            # hooks, plugins and CLAUDE.md auto-discovery are skipped. --strict-mcp-config with no
+            # --mcp-config: no MCP server from the user's own configuration reaches the reviewer.
+            # --restricted: the user's, the repo's and the local settings files are ignored, so an
+            # allow rule in any of them — including one the diff under review adds — cannot widen
+            # the fence (probed: without it a project allow rule opened /etc/hostname to both
+            # tools; with it both were refused and the tools stayed). The Haiku tier is pinned too, so no request leaves under a Claude model name for
+            # DeepSeek to remap. The two allow rules are the reviewer's search; the harness's own
+            # classification already lets rg and `git log` through, and lets nothing write.
+            ( cd "$repo_dir" && ANTHROPIC_BASE_URL="$HEADLESS_DEEPSEEK_BASE_URL" \
+                ANTHROPIC_API_KEY="$deepseek_key" \
+                ANTHROPIC_DEFAULT_HAIKU_MODEL="$HEADLESS_DEEPSEEK_MODEL" \
+                CLAUDE_CODE_MAX_CONTEXT_TOKENS="$HEADLESS_DEEPSEEK_CONTEXT_TOKENS" \
+                timeout "$HEADLESS_AGENT_TIMEOUT" \
+                claude -p --bare --restricted --strict-mcp-config --tools Read,Bash \
+                    --allowedTools 'Bash(grep:*)' 'Bash(ls:*)' \
+                    --model "$HEADLESS_DEEPSEEK_MODEL" < "$prompt_file" )
             ;;
         codex)
             codex_binary="$(headless_codex_binary)"

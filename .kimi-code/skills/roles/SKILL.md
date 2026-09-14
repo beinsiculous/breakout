@@ -15,6 +15,7 @@ session started from any harness, in any clone, reads the same roster.
 | **planner / architect** | Claude Fable | `claude`, interactive | the session you are in; owns the plan, the gates, the adjudication, the accepted fixes and every commit |
 | **artist / UI expert** | Astra | `codex`, `gpt-6-astra` | interactive for art and UI planning; `scripts/request-review.sh … --reviewer=codex` for a review; `claude mcp add --scope user codex -- codex mcp-server` lets a Claude session ask it directly |
 | **reviewer (quality)** | Kimi | `kimi` | `scripts/request-review.sh … --reviewer=kimi` — the default single reviewer on every plan and diff |
+| **reviewer (quality, second)** | DeepSeek | `claude -p` pointed at DeepSeek's endpoint, `deepseek-flash` | `scripts/request-review.sh … --reviewer=deepseek` — a second opinion cheap enough for every diff, and the fallback when kimi is out |
 | **executor / builder** | Gemini, or Claude Opus | `agy` (a Gemini model), or a Claude Code session given a handoff | a handoff prompt (`handoff-loop` § 2); a session handed `review/<subject>/handoff-<batch>.md` is the executor whichever model it is |
 
 The roster is the **default, not a rule**: to each their own. Any vendor may fill any role,
@@ -27,7 +28,7 @@ role default, so the reviewers depend on who authored:
 
 | author | independent reviewer(s) | and, when a screen or an asset is in it |
 |---|---|---|
-| Claude (the usual planner) | `kimi`; add `gemini` for a diff that changes a test harness, a fixture or a public seam | add `codex` |
+| Claude (the usual planner) | `kimi`; add `gemini` for a diff that changes a test harness, a fixture or a public seam; `deepseek` may join or stand in for `kimi` | add `codex` |
 | Kimi (planning from Kimi Code) | `claude`; add `gemini` as above | add `codex` |
 | Astra / Codex (a UI plan, an art batch) | `kimi` and `gemini`; the planner's own review is the UI eye | — feedback from the author's own vendor is specialist feedback, never the independent review, and is named as such |
 | Gemini (a batch from a handoff) | `kimi` and the planner, as `handoff-loop` § 3 says | add `codex` |
@@ -59,6 +60,7 @@ reviewer, `codex` included.
 
 Each CLI's setup lives in the `adversarial-review` skill (§ What the reviewer can and cannot
 do, and the per-machine blocks under it): `agy` needs an allow rule, `codex` needs a login,
-a trusted clone directory and its model pinned, `kimi` needs its hooks registered. What each
+a trusted clone directory and its model pinned, `kimi` needs its hooks registered, `deepseek`
+needs only a key file (the harness is `claude`, already on PATH). What each
 CLI actually enforces when it reviews — writes, reads, tool set — is recorded there and in
 the header of `scripts/lib/headless-agent.sh`, proven by probe, never assumed.

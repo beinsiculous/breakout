@@ -99,6 +99,18 @@ end with the `git status --porcelain` of the batch scope and the
 `git diff --cached --stat` tail, so a finished batch is distinguishable from
 an abandoned one.
 
+**An art batch uses `prompts/handoff-art-batch.md` instead** — the same shape with the art
+contract in place of the Rust one: the first rule is that every pixel is drawn in Aseprite
+(`aseprite -b` and Lua, or the editor), never by an image-generation model, and the planner
+enforces it by re-exporting every master with `scripts/export_sheet.py --check` — a PNG that
+differs by one byte is rejected; step 0 reports the checkout's head and the Aseprite version; the
+brief carries the master, the concepts, the cell size, the clips with their timing and which play
+once, the ramps and the standing rulings; the gates are the layout checker, the re-export check
+and the palette check against the handoff head's § 4 — tooling that lands with the art revamp's
+batch 1 in `deion_assets`; an art handoff is not dispatched before it exists. Its executor is Astra
+(`codex`) in its own session, and its reviewers are kimi and gemini, never codex (`roles`: a vendor
+never reviews its own vendor's work; the planner's own review is the UI eye).
+
 While a batch is out — including any second pass — the planner **neither edits
 nor runs cargo** in that checkout. Verification is the executor's job until
 the report arrives; two cargo runs in one target directory block each other or

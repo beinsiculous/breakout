@@ -89,7 +89,7 @@ Planned identity for this game under the Deion pivot (see the engine's `PROJECT_
 **New scope vs today**: the pyramid level-select screen and unlock persistence don't exist in the current linear 4-level roster — **design TBD at re-skin time**. Nothing is committed beyond the theme; today's `LEVELS`/`LEVELS_2P` arrays, `LevelSelect` state, and chaos-mode-per-level binding are what actually ship.
 
 **Asset rules (settled, engine-wide):**
-- Style SSOT: `deion_assets/DEION_STYLE.md` via the root symlink (the symlink assumes the standard side-by-side checkout — the same requirement the Cargo path dependency already imposes).
+- Style SSOT: `deion_assets/DEION_STYLE.md` via the `deion_assets -> ../../deion_assets` symlink (the working set's layout — the Cargo path dep `../../insiculous_2d` already requires it).
 - Metrics: 16px base cell, nearest filtering, 5× integer scale to `RENDER_UNIT = 80`. Never fake footprints via `Transform2D.scale` (colliders ignore it).
 - Runtime assets arrive ONLY via the deion_assets sync copy into `assets/sprites/` (F2 tooling, not yet built) — never symlink art in, never hand-copy.
 - AI art is quarantined: `ai_` prefix, lives only in `deion_assets/ai/`, ships in FREE web builds only, never in paid/marketplace builds (tiered rule, DEION_STYLE.md §6, Aug 19 2026). `deion_assets/scripts/check_no_ai_assets.sh` must pass on any paid release's asset tree.

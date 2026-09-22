@@ -28,7 +28,7 @@ use std::path::PathBuf;
 /// VERSION-BUMP CHECKLIST — these must all agree (a mismatch 404s every
 /// asset at boot with a "not in vfs" message):
 /// 1. this constant (`/games/<slug>/v<N>/assets`),
-/// 2. `scripts/build_wasm.sh`'s output dir (currently hardcoded `v1`),
+/// 2. `scripts/build_wasm.sh`'s `--version vN` (its output dir `dist/games/<slug>/v<N>/`),
 /// 3. the site's `src/content/games/<slug>.md` `wasm:` path,
 /// 4. the deployed dir `insiculous_web/public/games/<slug>/v<N>/`.
 #[cfg(not(feature = "editor"))]

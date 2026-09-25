@@ -32,7 +32,7 @@ fn armored_brick_reflects_first_hit_and_dies_on_second() {
     let brick = world.spawn()
         .with(Transform2D::new(Vec2::new(0.0, 100.0)))
         .with(RigidBody::new_static())
-        .with(Collider::box_collider(BRICK_W, BRICK_H).with_friction(0.0).with_restitution(1.0))
+        .with(Collider::box_collider(BRICK_CELL.x, BRICK_CELL.y).with_friction(0.0).with_restitution(1.0))
         .id();
     let mut hits_left: u32 = 2;
 
@@ -83,9 +83,10 @@ fn armored_brick_reflects_first_hit_and_dies_on_second() {
     assert!(!world.entities().contains(&brick), "brick must be destroyed on the second hit");
 }
 
-/// Falling pickups: one lands on the capsule paddle (caught — started event
+/// Falling candies: one lands on the capsule paddle (caught — started event
 /// against the kinematic body), one falls past it into the bottom sensor
-/// (missed — despawn signal). The exact entity recipe the game uses.
+/// (missed — despawn signal). The exact entity recipe the game uses: the
+/// multiball candy's sensor is its drawn body.
 #[test]
 fn falling_pickup_caught_by_paddle_and_missed_one_hits_sensor() {
     let mut world = World::new();
@@ -104,11 +105,12 @@ fn falling_pickup_caught_by_paddle_and_missed_one_hits_sensor() {
         .with(Collider::box_collider(WIN_W + 200.0, 20.0).as_sensor())
         .id();
 
+    let body = CANDY_MULTIBALL.bounds.1 - CANDY_MULTIBALL.bounds.0;
     let spawn_pickup = |world: &mut World, physics: &mut PhysicsSystem, x: f32| {
         let e = world.spawn()
             .with(Transform2D::new(Vec2::new(x, 100.0)))
             .with(RigidBody::new_dynamic().with_gravity_scale(0.0).with_rotation_locked(true))
-            .with(Collider::box_collider(PICKUP_SIZE, PICKUP_SIZE).as_sensor())
+            .with(Collider::box_collider(body.x, body.y).as_sensor())
             .id();
         physics.set_velocity(e, Vec2::new(0.0, -PICKUP_FALL_SPEED), 0.0);
         e
@@ -228,7 +230,7 @@ fn ball_reflects_off_every_brick_it_destroys() {
     // Bottom wall stands in for the paddle so the rally never ends.
     spawn_wall(&mut world, Vec2::new(0.0, -top_y), WIN_W, WALL_THICKNESS);
 
-    let mut bricks = crate::spawning::spawn_bricks(&mut world, 0);
+    let mut bricks = crate::spawning::spawn_bricks(&mut world, &crate::types::Sheets::default());
 
     // Ball exactly as spawn_ball builds it.
     let ball = world.spawn()
@@ -281,7 +283,7 @@ fn ball_reflects_off_every_brick_it_destroys() {
                     }
                     // The bug: ball hit the brick from below and is
                     // STILL climbing afterwards → it ploughed through.
-                    let was_below = ball_pos.y < brick_pos.y - BRICK_H / 2.0;
+                    let was_below = ball_pos.y < brick_pos.y - BRICK_CELL.y / 2.0;
                     if was_below && new_vel.y > 1.0 {
                         ploughs += 1;
                     }

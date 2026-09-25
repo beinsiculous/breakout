@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use engine_core::prelude::*;
 
-use crate::constants::{BRICK_ROWS, BRICK_VALUE_STEP};
+use crate::constants::{food_for_row, Food, BRICK_ROWS, BRICK_VALUE_STEP};
 use crate::spawning::brick_value;
 use crate::types::{Brick, GameMode, PickupKind};
 
@@ -56,7 +56,7 @@ pub(crate) fn roster(mode: GameMode) -> &'static [LevelDef] {
 pub(crate) fn level_hint(mode: GameMode, index: usize) -> &'static str {
     match (mode, index) {
         (GameMode::SinglePlayer, 0) => "The classic wall. A gentle taste of armor.",
-        (GameMode::SinglePlayer, 1) => "A fortress of steel. Ball speeds up per paddle hit.",
+        (GameMode::SinglePlayer, 1) => "A fortress of foil. Ball speeds up per paddle hit.",
         (GameMode::SinglePlayer, 2) => "Crack it open - it rains power-ups. Two-ball serves.",
         (GameMode::SinglePlayer, 3) => "Armor, chaos, and everything at once.",
         (GameMode::TwoPlayerCoop, 0) => "The wall between you. Guard both edges.",
@@ -166,11 +166,26 @@ pub(crate) fn parse_brick_tag(tag: &str) -> BrickSpec {
     spec
 }
 
+/// The food a scene brick is made of: the food whose sheet its `SpriteAnimation`
+/// plays, so a level can be authored in any food by changing the scene. A brick
+/// whose sheet names no food falls back to its row's tier, with a warning.
+pub(crate) fn brick_food(name: &str, sheet: Option<&str>) -> Food {
+    if let Some(food) = sheet.and_then(Food::from_sheet_path) {
+        return food;
+    }
+    let row = brick_row_from_name(name).unwrap_or(BRICK_ROWS - 1);
+    eprintln!(
+        "breakout: brick {name} plays no known food sheet ({}); using its row's food",
+        sheet.unwrap_or("<none>")
+    );
+    food_for_row(row)
+}
+
 /// Build the game's `Brick` bookkeeping from a scene instance's named
-/// entities: every entity named `brick*` becomes a brick. The particle-burst
-/// color is read from the entity's live `Sprite`, so bricks retinted in the
-/// editor keep matching effects; armor/drop behavior comes from the
-/// entity's `EntityTag` (see `parse_brick_tag`).
+/// entities: every entity named `brick*` becomes a brick. Reads the world and
+/// writes nothing: the food comes from the entity's sheet (see `brick_food`),
+/// the armor and the drop from its `EntityTag` (see `parse_brick_tag`), and the
+/// frame it shows from its scene's `autoplay`.
 pub(crate) fn bricks_from_names(
     named_entities: &HashMap<String, EntityId>,
     world: &World,
@@ -183,13 +198,13 @@ pub(crate) fn bricks_from_names(
                 .get::<EntityTag>(entity)
                 .map(|t| parse_brick_tag(&t.0))
                 .unwrap_or_default();
+            let sheet = world
+                .get::<SpriteAnimation>(entity)
+                .and_then(|animation| animation.sheet.clone());
             Brick {
                 entity,
                 value: brick_value_from_name(name),
-                color: world
-                    .get::<Sprite>(entity)
-                    .map(|s| s.color)
-                    .unwrap_or(Vec4::ONE),
+                food: brick_food(name, sheet.as_deref()),
                 hits_left: spec.hits,
                 drop: spec.drop,
             }

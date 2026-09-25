@@ -1,12 +1,12 @@
 //! Visual effect presets — particle configs.
 //!
-//! Centralizes the look of each event (brick destroyed, paddle hit, ball
-//! lost) so tuning happens in one place. The deforming grid uses the
-//! engine's `default_playfield_grid` preset directly.
+//! Centralizes the look of each event (brick destroyed, armor hit, paddle
+//! hit, ball lost) so tuning happens in one place. The backdrop grid is the
+//! engine's; gameplay only ripples it.
 
 use engine_core::prelude::*;
 
-/// Omnidirectional shatter when a brick dies, tinted to the brick's color.
+/// Omnidirectional shatter when a brick dies, tinted to its food's colour.
 pub(crate) fn brick_burst(color: Vec4, theme: &ChaosTheme, tex: u32) -> ParticleConfig {
     let count = (30.0 * theme.particle_count_mult).round() as usize;
     ParticleConfig::burst(count)
@@ -20,7 +20,7 @@ pub(crate) fn brick_burst(color: Vec4, theme: &ChaosTheme, tex: u32) -> Particle
         .with_texture(tex)
 }
 
-/// Small metallic spark when an armored brick takes a non-final hit.
+/// Small foil spark when an armored brick takes a non-final hit.
 pub(crate) fn armor_hit_burst(color: Vec4, theme: &ChaosTheme, tex: u32) -> ParticleConfig {
     let count = (10.0 * theme.particle_count_mult).round() as usize;
     ParticleConfig::burst(count)
@@ -48,23 +48,9 @@ pub(crate) fn paddle_hit_burst(color: Vec4, theme: &ChaosTheme, tex: u32) -> Par
         .with_texture(tex)
 }
 
-/// Celebratory pop when the paddle catches a pickup, tinted to its kind.
-pub(crate) fn pickup_catch_burst(color: Vec4, theme: &ChaosTheme, tex: u32) -> ParticleConfig {
-    let count = (24.0 * theme.particle_count_mult).round() as usize;
-    ParticleConfig::burst(count)
-        .with_lifetime(0.25, 0.55)
-        .with_speed(120.0, 300.0)
-        .with_direction(Vec2::Y, std::f32::consts::FRAC_PI_2) // upward fan
-        .with_color(color, Vec4::new(color.x, color.y, color.z, 0.0))
-        .with_scale(6.0, 0.5)
-        .with_drag(2.4)
-        .with_emissive(2.4)
-        .with_texture(tex)
-}
-
-/// Large explosion when a ball falls past the paddle.
+/// Large spray under a lost ball's splash, in Deion's water.
 pub(crate) fn ball_lost_burst(theme: &ChaosTheme, tex: u32) -> ParticleConfig {
-    let color = Vec4::new(1.0, 0.35, 0.25, 1.0);
+    let color = crate::constants::SPLASH_BURST_COLOR;
     let count = (70.0 * theme.particle_count_mult).round() as usize;
     ParticleConfig::burst(count)
         .with_lifetime(0.4, 0.9)

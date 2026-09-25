@@ -1,5 +1,4 @@
 use engine_core::prelude::*;
-use crate::chaos_theme::theme_for;
 use crate::constants::*;
 use crate::spawning;
 use crate::types::*;
@@ -137,6 +136,7 @@ impl BreakoutGame {
 
         self.destroy_all_balls(ctx.world);
         self.destroy_all_pickups(ctx.world);
+        self.clear_transient_visuals(ctx.world);
         self.wrecking.stop();
         for brick in self.bricks.drain(..) {
             self.physics.destroy_entity(ctx.world, brick.entity);
@@ -146,10 +146,10 @@ impl BreakoutGame {
         self.rebuild_playfield(ctx.world, self.mode);
         self.bricks = self.spawn_level_bricks(ctx);
 
-        let ball = self.spawn_ball(ctx.world);
+        let ball = self.spawn_ball(ctx.world, "Deion", self.serve_position(ctx.world));
         self.ball = Some(ball);
 
-        self.apply_theme(ctx.world);
+        self.apply_backdrop_theme(ctx.world);
         if let Some(paddle) = self.paddle {
             self.physics.set_kinematic_target(paddle, Vec2::new(0.0, PADDLE_Y), 0.0);
         }
@@ -179,24 +179,8 @@ impl BreakoutGame {
             }
         }
         match self.mode {
-            GameMode::SinglePlayer => spawning::spawn_bricks(ctx.world, self.tex_id),
-            GameMode::TwoPlayerCoop => spawning::spawn_bricks_2p(ctx.world, self.tex_id),
+            GameMode::SinglePlayer => spawning::spawn_bricks(ctx.world, &self.sheets),
+            GameMode::TwoPlayerCoop => spawning::spawn_bricks_2p(ctx.world, &self.sheets),
         }
-    }
-
-    /// Push the current `chaos_mode`'s look onto the live entities:
-    /// background tint, wall color, ball color, and grid color.
-    pub(crate) fn apply_theme(&mut self, world: &mut World) {
-        let theme = theme_for(self.chaos_mode);
-        if let Some(bg) = self.background {
-            if let Some(s) = world.get_mut::<Sprite>(bg) { s.color = theme.bg_color; }
-        }
-        for &w in &self.walls {
-            if let Some(s) = world.get_mut::<Sprite>(w) { s.color = theme.structure_color; }
-        }
-        for ball in self.ball.into_iter().chain(self.extra_balls.iter().copied()) {
-            if let Some(s) = world.get_mut::<Sprite>(ball) { s.color = theme.accent_color; }
-        }
-        self.grid = Some(default_playfield_grid(&theme));
     }
 }

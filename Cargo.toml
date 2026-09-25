@@ -17,6 +17,11 @@ engine_core = { path = "../../insiculous_2d/crates/engine_core" }
 editor_integration = { path = "../../insiculous_2d/crates/editor_integration", optional = true }
 glam = { version = "0.30.10", features = ["serde"] }
 
+# Tests drive the game's update loop headlessly through
+# `engine_core::test_support::GameHarness`; the feature reaches test builds only.
+[dev-dependencies]
+engine_core = { path = "../../insiculous_2d/crates/engine_core", features = ["test-support"] }
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # The `=` pin must match the wasm-bindgen CLI (asserted by build_wasm.sh)
 # and engine_core's own pin.

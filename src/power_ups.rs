@@ -1,33 +1,46 @@
-//! Falling power-up pickups and the effects they grant.
+//! Falling power-up candies and the effects they grant.
 //!
-//! Special bricks (tagged `drop_*` in the level scenes) drop a glowing
-//! capsule when destroyed; the player must catch it with the PADDLE.
+//! Special bricks (tagged `drop_*` in the level scenes) drop a wrapped candy
+//! when destroyed; the player must catch it with a tong.
 //! Tracking/collection mechanics come from the engine's `Pickups` /
 //! `EffectTimer`; this module owns what the pickups DO.
 
 use engine_core::prelude::*;
 
-use crate::chaos_theme::theme_for;
 use crate::constants::*;
-use crate::effects;
+use crate::spawning::{art_components, candy_machine, spawn_effect};
 use crate::types::*;
 
-/// Capsule tint per pickup kind (mirrors the dropping brick's color).
-pub(crate) fn pickup_color(kind: PickupKind) -> Vec4 {
+/// What a candy kind is drawn with: its sheet's spec and the one depth that sheet —
+/// the falling candies and the collects they leave — is drawn at.
+pub(crate) fn candy_spec(kind: PickupKind) -> (&'static SheetSpec, f32) {
     match kind {
-        PickupKind::Multiball => MULTIBALL_PICKUP_COLOR,
-        PickupKind::Wrecking => WRECKING_PICKUP_COLOR,
-        PickupKind::Insiculous => INSICULOUS_PICKUP_COLOR,
+        PickupKind::Multiball => (&CANDY_MULTIBALL, CANDY_MULTIBALL_DEPTH),
+        PickupKind::Wrecking => (&CANDY_WRECKING, CANDY_WRECKING_DEPTH),
+        PickupKind::Insiculous => (&CANDY_INSICULOUS, CANDY_INSICULOUS_DEPTH),
     }
 }
 
-/// Editor-hierarchy display name for a spawned pickup entity.
-fn pickup_entity_name(kind: PickupKind) -> &'static str {
+/// Editor-hierarchy display name for a falling candy.
+fn candy_entity_name(kind: PickupKind) -> &'static str {
     match kind {
-        PickupKind::Multiball => "Pickup (Multiball)",
-        PickupKind::Wrecking => "Pickup (Wrecking Ball)",
-        PickupKind::Insiculous => "Pickup (Insiculous)",
+        PickupKind::Multiball => "Candy (Multiball)",
+        PickupKind::Wrecking => "Candy (Wrecking Ball)",
+        PickupKind::Insiculous => "Candy (Insiculous)",
     }
+}
+
+/// The positions of the candies a collection took, in the tracker's own order.
+///
+/// `Pickups::collect` reports and removes exactly the same candies in the same order,
+/// so a caller zips the two to learn where each caught candy was falling — by the time
+/// the call returns, that entity and its position are gone from the world.
+fn collected_positions(tracked: &[(EntityId, Vec2)], remaining: &[EntityId]) -> Vec<Vec2> {
+    tracked
+        .iter()
+        .filter(|(entity, _)| !remaining.contains(entity))
+        .map(|(_, position)| *position)
+        .collect()
 }
 
 /// What catching a pickup grants: (extra balls spawned, wrecking refresh).
@@ -51,20 +64,35 @@ impl BreakoutGame {
         self.wrecking.active()
     }
 
-    /// Drop a pickup capsule at a destroyed brick's position; it falls
-    /// toward the paddle as a dynamic sensor (no ball interference).
+    /// The loaded sheet a candy kind wears.
+    pub(crate) fn candy_sheet(&self, kind: PickupKind) -> &SpriteSheet {
+        match kind {
+            PickupKind::Multiball => &self.sheets.candy_multiball,
+            PickupKind::Wrecking => &self.sheets.candy_wrecking,
+            PickupKind::Insiculous => &self.sheets.candy_insiculous,
+        }
+    }
+
+    /// Drop a candy at a destroyed brick's position; it falls toward the paddle as a
+    /// dynamic sensor (no ball interference). Its sensor is the candy's drawn body, the
+    /// union of its `idle` frames, and the sheet's anchor centres that body on it.
     pub(crate) fn spawn_pickup(&mut self, world: &mut World, kind: PickupKind, pos: Vec2) {
+        let (spec, depth) = candy_spec(kind);
+        let (sprite, animation) = art_components(self.candy_sheet(kind), spec, depth);
+        let body = spec.bounds.1 - spec.bounds.0;
         let entity = world
             .spawn()
-            .with(Name::new(pickup_entity_name(kind)))
-            .with(Transform2D::from_parts(pos, 0.0, Vec2::splat(PICKUP_SIZE / RENDER_UNIT)))
-            .with(Sprite::new(self.tex_id).with_color(pickup_color(kind)).with_emissive(1.8))
+            .with(Name::new(candy_entity_name(kind)))
+            .with(Transform2D::from_parts(pos, 0.0, spec.scale()))
+            .with(sprite)
+            .with(animation)
+            .with(candy_machine())
             .with(
                 RigidBody::new_dynamic()
                     .with_gravity_scale(0.0)
                     .with_rotation_locked(true),
             )
-            .with(Collider::box_collider(PICKUP_SIZE, PICKUP_SIZE).as_sensor())
+            .with(Collider::box_collider(body.x, body.y).as_sensor())
             .id();
         // Buffered-safe on the spawn frame; applied once the body syncs.
         self.physics.set_velocity(entity, Vec2::new(0.0, -PICKUP_FALL_SPEED), 0.0);
@@ -72,8 +100,9 @@ impl BreakoutGame {
     }
 
     /// Resolve paddle catches from this frame's collision snapshot and grant
-    /// the effects. In co-op either paddle catches; pickups fall toward the
-    /// bottom paddle, but a top-paddle graze on the way down still counts.
+    /// the effects. In co-op either paddle catches; candies fall toward the
+    /// bottom paddle, but a top-paddle graze on the way down still counts. A
+    /// caught candy unwraps where it was caught.
     pub(crate) fn check_pickup_catches(
         &mut self,
         ctx: &mut GameContext,
@@ -81,6 +110,13 @@ impl BreakoutGame {
     ) {
         let catchers: Vec<EntityId> =
             [self.paddle, self.paddle_top].into_iter().flatten().collect();
+        // Where the live candies are, taken before the collection destroys the ones it
+        // reaches.
+        let tracked: Vec<(EntityId, Vec2)> = self
+            .pickups
+            .entities()
+            .filter_map(|entity| ctx.world.get::<Transform2D>(entity).map(|t| (entity, t.position)))
+            .collect();
         let caught = self
             .pickups
             .collect(collisions, &catchers, &mut self.physics, ctx.world);
@@ -88,8 +124,7 @@ impl BreakoutGame {
             return;
         }
 
-        let theme = theme_for(self.chaos_mode);
-        for (kind, catcher) in caught {
+        for &(kind, _) in &caught {
             let (extra_balls, wrecking) = pickup_effects(kind);
             for _ in 0..extra_balls {
                 self.try_spawn_extra_ball(ctx);
@@ -99,15 +134,18 @@ impl BreakoutGame {
                 self.wrecking.start(WRECKING_DURATION);
                 self.apply_ball_visuals(ctx.world);
             }
+        }
 
-            if let Some(pos) = ctx.world.get::<Transform2D>(catcher).map(|t| t.position) {
-                // Burst toward the field: above the bottom paddle, below the top.
-                let toward_field = if pos.y > 0.0 { -PADDLE_H } else { PADDLE_H };
-                ctx.particles.spawn_burst(
-                    pos + Vec2::new(0.0, toward_field),
-                    &effects::pickup_catch_burst(pickup_color(kind), &theme, self.tex_id),
-                );
-            }
+        // `collect` reports in the tracker's order and `collected_positions` keeps it,
+        // and every candy `spawn_pickup` tracks carries a `Transform2D`, so each kind
+        // pairs with its own position.
+        let remaining: Vec<EntityId> = self.pickups.entities().collect();
+        let taken = collected_positions(&tracked, &remaining);
+        for ((kind, _), position) in caught.iter().zip(taken) {
+            let (spec, depth) = candy_spec(*kind);
+            let collect = spawn_effect(
+                ctx.world, "Candy Collect", spec, self.candy_sheet(*kind), depth, position, CANDY_COLLECT);
+            self.transient_visuals.push(collect);
         }
     }
 
@@ -123,18 +161,14 @@ impl BreakoutGame {
             .and_then(|p| ctx.world.get::<Transform2D>(p).map(|t| t.position.x))
             .unwrap_or(0.0);
 
-        let ball = self.spawn_ball(ctx.world);
-        // reset flushes before the velocity in the same physics update, so
-        // the launch survives the reposition.
-        self.physics
-            .reset_body(ball, Vec2::new(paddle_x, PADDLE_Y + SERVE_OFFSET_Y));
+        let ball = self.spawn_ball(ctx.world, "Deion (extra)", Vec2::new(paddle_x, PADDLE_Y + SERVE_OFFSET_Y));
         let angle = (hash_f32(self.frame_count.wrapping_add(7)) - 0.5) * 0.8;
         let dir = Vec2::new(angle.sin(), angle.cos());
         let speed = (BALL_SPEED * self.speed_mult).min(BALL_MAX_SPEED);
         self.physics.set_velocity(ball, dir * speed, 0.0);
 
         self.extra_balls.push(ball);
-        // New ball adopts the current look (red-hot if wrecking is active).
+        // A new ball adopts the current form: frozen while wrecking runs.
         self.apply_ball_visuals(ctx.world);
     }
 
@@ -169,28 +203,33 @@ impl BreakoutGame {
         }
     }
 
-    /// Tick the wrecking clock; when it expires, cool the balls back down.
+    /// Tick the wrecking clock; when it expires, thaw the balls.
     pub(crate) fn update_wrecking(&mut self, ctx: &mut GameContext) {
         if self.wrecking.tick(ctx.delta_time) {
             self.apply_ball_visuals(ctx.world);
         }
     }
 
-    /// Push the current effect state onto every live ball's sprite:
-    /// red-hot while wrecking, the chaos theme's ball look otherwise.
-    /// Called on effect start/expiry AND on every ball spawn, so nothing
-    /// can keep a stale look.
+    /// Dress every live ball in the current form's sheet: frozen while wrecking runs,
+    /// water otherwise. The swap writes the texture, the depth and the animation's grid
+    /// and clips — never a colour — and the two sheets' bodies are the same box, so the
+    /// ball's anchor and collider are untouched. Called on effect start/expiry AND on
+    /// every ball spawn, so nothing can keep a stale form.
     pub(crate) fn apply_ball_visuals(&self, world: &mut World) {
-        let theme = theme_for(self.chaos_mode);
-        let (color, emissive) = if self.wrecking.active() {
-            (WRECKING_BALL_COLOR, WRECKING_BALL_EMISSIVE)
+        let (sheet, depth) = if self.wrecking.active() {
+            (&self.sheets.ball_ice, BALL_ICE_DEPTH)
         } else {
-            (theme.accent_color, BALL_EMISSIVE)
+            (&self.sheets.ball_water, BALL_WATER_DEPTH)
         };
         for ball in self.ball.into_iter().chain(self.extra_balls.iter().copied()) {
-            if let Some(s) = world.get_mut::<Sprite>(ball) {
-                s.color = color;
-                s.emissive = emissive;
+            if let Some(sprite) = world.get_mut::<Sprite>(ball) {
+                sprite.texture_handle = sheet.texture.id;
+                sprite.depth = depth;
+            }
+            if let Some(animation) = world.get_mut::<SpriteAnimation>(ball) {
+                animation.grid = sheet.grid;
+                animation.clips = sheet.clips.clone();
+                animation.sheet = Some(sheet.path.clone());
             }
         }
     }
@@ -202,7 +241,7 @@ impl BreakoutGame {
 
     /// Make drop-bricks visibly pulse so players can spot the prizes.
     /// Owns the emissive channel for drop bricks only — armor damage owns
-    /// the color channel, so the two never fight.
+    /// the animation's frames, so the two never fight.
     pub(crate) fn pulse_drop_bricks(&self, world: &mut World) {
         let glow = 1.2 + 0.6 * (self.frame_count as f32 * 0.12).sin();
         for brick in self.bricks.iter().filter(|b| b.drop.is_some()) {
@@ -233,14 +272,5 @@ mod tests {
         assert!(multiball_allowed(MAX_EXTRA_BALLS - 1));
         assert!(!multiball_allowed(MAX_EXTRA_BALLS));
         assert!(!multiball_allowed(MAX_EXTRA_BALLS + 1));
-    }
-
-    #[test]
-    fn pickup_colors_match_brick_authoring_colors() {
-        // The level scenes author drop-bricks in these exact colors so the
-        // player can read what a brick drops before breaking it.
-        assert_eq!(pickup_color(PickupKind::Multiball), MULTIBALL_PICKUP_COLOR);
-        assert_eq!(pickup_color(PickupKind::Wrecking), WRECKING_PICKUP_COLOR);
-        assert_eq!(pickup_color(PickupKind::Insiculous), INSICULOUS_PICKUP_COLOR);
     }
 }

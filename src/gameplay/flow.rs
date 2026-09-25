@@ -1,6 +1,8 @@
 //! Match state transitions, win detection, and entity visibility.
 
 use engine_core::prelude::*;
+use crate::chaos_theme::theme_for;
+use crate::spawning::backdrop_color;
 use crate::types::*;
 
 /// High-score board a session records into (see docs/WEB_SAVES.md: mode
@@ -62,24 +64,59 @@ impl BreakoutGame {
     pub(crate) fn reset_to_title(&mut self, world: &mut World) {
         self.destroy_all_balls(world);
         self.destroy_all_pickups(world);
+        self.clear_transient_visuals(world);
         self.wrecking.stop();
+        self.rest_tongs(world);
         self.state = GameState::TitleScreen { selection: 0 };
     }
 
+    /// Put each tong back at rest, closed in the facing it holds — a scowl a quit
+    /// interrupted does not resume under the menus.
+    pub(crate) fn rest_tongs(&self, world: &mut World) {
+        for (tong, side) in [(self.tong, PaddleSide::Bottom), (self.tong_top, PaddleSide::Top)] {
+            let Some(tong) = tong else { continue };
+            let rest = tong_state(TONG_CLOSED, self.tong_facing[side.index()]);
+            if let Some(machine) = world.get_mut::<ClipStateMachine>(tong) {
+                let _ = machine.transition_to(&rest);
+            }
+        }
+    }
+
+    /// Give the backdrop grid the chosen chaos mode's colour. The level pick is the only
+    /// thing that changes the mode, and it happens after `init()` spawned the backdrop,
+    /// so the colour it was born with is the boot mode's.
+    pub(crate) fn apply_backdrop_theme(&self, world: &mut World) {
+        let color = backdrop_color(&theme_for(self.chaos_mode));
+        if let Some(backdrop) = self.backdrop {
+            if let Some(grid) = world.get_mut::<GridBackdrop>(backdrop) {
+                grid.color = color;
+            }
+        }
+    }
+
+    /// Drop every detached one-shot. An id the world has already dropped — a splash
+    /// whose `hurt` ran out — is skipped: the id is generational, so a stale entry can
+    /// never remove anything else.
+    pub(crate) fn clear_transient_visuals(&mut self, world: &mut World) {
+        for entity in self.transient_visuals.drain(..) {
+            world.remove_entity(&entity).ok();
+        }
+    }
+
+    /// Gameplay sprites only render during a match — the menus get the bare counter
+    /// and the grid over it, which stay up the way Tong's court does.
     pub(crate) fn update_entity_visibility(&self, ctx: &mut GameContext) {
         let visible = !matches!(
             self.state,
             GameState::TitleScreen { .. } | GameState::LevelSelect { .. } | GameState::Achievements
         );
-        let entities = [self.paddle, self.paddle_top, self.ball].into_iter().flatten()
+        let entities = [self.tong, self.tong_top, self.ball].into_iter().flatten()
             .chain(self.extra_balls.iter().copied())
-            .chain(self.walls.iter().copied())
+            .chain(self.wall_strips.iter().copied())
             .chain(self.bricks.iter().map(|b| b.entity))
-            .chain(self.pickups.entities().collect::<Vec<_>>());
-        for entity in entities {
-            if let Some(sprite) = ctx.world.get_mut::<Sprite>(entity) {
-                sprite.visible = visible;
-            }
-        }
+            .chain(self.pickups.entities().collect::<Vec<_>>())
+            .chain(self.transient_visuals.iter().copied())
+            .collect::<Vec<_>>();
+        set_sprites_visible(ctx.world, entities, visible);
     }
 }

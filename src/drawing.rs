@@ -4,6 +4,10 @@ use crate::chaos_theme::theme_for;
 use crate::menu::{achievements_panel, level_select_panel, title_label, title_panel, TITLE_ITEMS};
 use crate::types::*;
 
+/// How far below the window's centre the serve prompt's first line sits, in window
+/// pixels: clear of the food wall in both modes and above the bottom tong.
+const SERVE_PROMPT_BELOW_CENTER: f32 = 150.0;
+
 impl BreakoutGame {
     fn menu_style(&self) -> MenuStyle {
         MenuStyle::from_theme(&theme_for(self.chaos_mode))
@@ -20,7 +24,7 @@ impl BreakoutGame {
 
     fn draw_title(&self, ctx: &mut GameContext, selection: u8) {
         let style = self.menu_style();
-        let panel = title_panel("INSICULOUS BREAKOUT", ctx.window_size);
+        let panel = title_panel("THE FOOD PYRAMID", ctx.window_size);
         let mut y = panel.begin(ctx.ui, &style);
         for (i, item) in TITLE_ITEMS.iter().enumerate() {
             y = panel.item(ctx.ui, y, title_label(*item), i as u8 == selection, &style);
@@ -112,11 +116,18 @@ impl BreakoutGame {
         let cx = ctx.window_size.x / 2.0;
         let cy = ctx.window_size.y / 2.0;
 
-        ctx.ui.label(&format!("SCORE {}", self.score), Vec2::new(40.0, 16.0));
+        // Solo's top wall is drawn by the pale counter-edge rail, and white text on it
+        // loses its contrast: the HUD sits just below the rail there. Co-op has no top
+        // rail, and lower down its label would run into the top tong.
+        let hud_y = match self.mode {
+            GameMode::SinglePlayer => crate::constants::WALL_THICKNESS + 8.0,
+            GameMode::TwoPlayerCoop => 16.0,
+        };
+        ctx.ui.label(&format!("SCORE {}", self.score), Vec2::new(40.0, hud_y));
         let lives_text = format!("LIVES {}", "* ".repeat(self.lives as usize).trim_end());
-        ctx.ui.label(&lives_text, Vec2::new(ctx.window_size.x - 140.0, 16.0));
+        ctx.ui.label(&lives_text, Vec2::new(ctx.window_size.x - 140.0, hud_y));
         if self.mode == GameMode::TwoPlayerCoop {
-            ctx.ui.label_centered("CO-OP", Vec2::new(cx, 16.0));
+            ctx.ui.label_centered("CO-OP", Vec2::new(cx, hud_y));
         }
 
         let theme = theme_for(self.chaos_mode);
@@ -130,7 +141,7 @@ impl BreakoutGame {
         }
 
         if self.wrecking_active() {
-            let c = crate::constants::WRECKING_BALL_COLOR;
+            let c = crate::constants::WRECKING_LABEL_COLOR;
             ctx.ui.label_centered_styled(
                 &format!("WRECKING {:.1}s", self.wrecking.remaining()),
                 Vec2::new(cx, 72.0),
@@ -146,8 +157,13 @@ impl BreakoutGame {
                     (_, PaddleSide::Bottom) => "P1 SERVES - SPACE, CLICK, or (A) to launch",
                     (_, PaddleSide::Top) => "P2 SERVES - ENTER or (A) to launch",
                 };
-                ctx.ui.label_centered(server, Vec2::new(cx, cy - 50.0));
-                ctx.ui.label_centered("A/D, Arrows, stick, or mouse to move - ESC to pause", Vec2::new(cx, cy - 24.0));
+                // Between the wall and the bottom paddle: the food wall reaches 44 px above
+                // the centre solo, and co-op's band 106 px below it.
+                ctx.ui.label_centered(server, Vec2::new(cx, cy + SERVE_PROMPT_BELOW_CENTER));
+                ctx.ui.label_centered(
+                    "A/D, Arrows, stick, or mouse to move - ESC to pause",
+                    Vec2::new(cx, cy + SERVE_PROMPT_BELOW_CENTER + 26.0),
+                );
             }
             GameState::GameOver { won } => {
                 let msg = if *won { "BOARD CLEARED!" } else { "GAME OVER" };

@@ -9,12 +9,12 @@ use std::path::PathBuf;
 use engine_core::prelude::*;
 
 use crate::constants::{
-    BRICK_COLS, BRICK_GAP, BRICK_H, BRICK_ROWS, BRICK_VALUE_STEP, BRICK_W, PADDLE_TOP_Y, PADDLE_Y,
-    PLAYFIELD_HALF_W,
+    food_for_row, Food, BRICK_CELL, BRICK_COLS, BRICK_GAP, BRICK_ROWS, BRICK_VALUE_STEP, FOODS,
+    PADDLE_TOP_Y, PADDLE_Y, PLAYFIELD_HALF_W,
 };
 use crate::levels::*;
 use crate::spawning::{brick_value, brick_x, brick_y};
-use crate::types::{GameMode, PickupKind};
+use crate::types::{GameMode, PickupKind, BRICK_ARMORED, BRICK_INTACT};
 
 fn manifest_scene_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/scenes/level1.scene.ron")
@@ -24,7 +24,8 @@ fn load_scene() -> SceneData {
     SceneLoader::load_from_file(manifest_scene_path()).expect("level1.scene.ron should parse")
 }
 
-/// Effective (merged prefab + override) components of an entity.
+/// Effective components of an entity, merged as the engine merges them: the prefab's,
+/// then the overrides, then the inline components an editor save writes.
 fn merged_components(scene: &SceneData, entity: &EntityData) -> Vec<ComponentData> {
     let mut result: Vec<ComponentData> = entity
         .prefab
@@ -32,7 +33,7 @@ fn merged_components(scene: &SceneData, entity: &EntityData) -> Vec<ComponentDat
         .and_then(|p| scene.prefabs.get(p))
         .map(|p| p.components.clone())
         .unwrap_or_default();
-    for over in &entity.overrides {
+    for over in entity.overrides.iter().chain(&entity.components) {
         let kind = std::mem::discriminant(over);
         if let Some(pos) = result.iter().position(|c| std::mem::discriminant(c) == kind) {
             result[pos] = over.clone();
@@ -169,17 +170,17 @@ fn shipped_level_positions_match_generated_grid() {
         assert_eq!(transform.0, (brick_x(col), brick_y(row)), "position of {name}");
         assert_eq!(
             transform.1,
-            (BRICK_W / RENDER_UNIT, BRICK_H / RENDER_UNIT),
-            "scale of {name}"
+            (BRICK_CELL.x / RENDER_UNIT, BRICK_CELL.y / RENDER_UNIT),
+            "scale of {name}: the cell drawn at 1x"
         );
     }
 }
 
 /// Guards the sprite/collider size footgun: physics ignores
-/// Transform2D.scale, so collider half-extents must stay in sync with the
-/// sprite's scale x RENDER_UNIT size — in EVERY roster level, both modes.
+/// Transform2D.scale, so every brick's collider must be its cell — the
+/// same 64 x 32 its sprite draws — in EVERY roster level, both modes.
 #[test]
-fn every_level_colliders_match_brick_dimensions() {
+fn every_brick_collider_is_its_cell() {
     for mode in BOTH_MODES {
         for def in roster(mode) {
             let scene = load_roster_level(def);
@@ -197,7 +198,7 @@ fn every_level_colliders_match_brick_dimensions() {
                     .unwrap_or_else(|| panic!("{name} in {} has no box collider", def.scene_file));
                 assert_eq!(
                     half_extents,
-                    (BRICK_W / 2.0, BRICK_H / 2.0),
+                    (BRICK_CELL.x / 2.0, BRICK_CELL.y / 2.0),
                     "collider of {name} in {}",
                     def.scene_file
                 );
@@ -207,31 +208,214 @@ fn every_level_colliders_match_brick_dimensions() {
 }
 
 #[test]
-fn shipped_level_bricks_glow_and_fit_playfield() {
-    let scene = load_scene();
-    // Emissive must survive the schema (bricks lose their neon look
-    // silently otherwise), and the grid must stay inside the walls.
-    let total_width = BRICK_COLS as f32 * BRICK_W + (BRICK_COLS as f32 - 1.0) * BRICK_GAP;
-    assert!(total_width < crate::constants::WIN_W - 2.0 * crate::constants::WALL_THICKNESS);
-    for entity in &scene.entities {
-        let components = merged_components(&scene, entity);
-        let emissive = components
-            .iter()
-            .find_map(|c| match c {
-                ComponentData::Sprite { emissive, .. } => Some(*emissive),
-                _ => None,
-            })
-            .expect("brick has a sprite");
-        let tagged = components
-            .iter()
-            .any(|c| matches!(c, ComponentData::EntityTag { .. }));
-        if tagged {
-            // Special bricks style themselves (armor dims, drops glow).
-            assert!(emissive > 0.0);
-        } else {
-            assert_eq!(emissive, 0.9);
+fn plain_bricks_do_not_glow_and_the_grid_fits_between_the_walls() {
+    // The foods are art, not light: emissive belongs to the candy-dropping bricks'
+    // pulse, which the game drives at runtime, never to the scene.
+    let total_width = BRICK_COLS as f32 * BRICK_CELL.x + (BRICK_COLS as f32 - 1.0) * BRICK_GAP;
+    assert!(total_width < 2.0 * PLAYFIELD_HALF_W);
+    for mode in BOTH_MODES {
+        for def in roster(mode) {
+            let scene = load_roster_level(def);
+            for entity in &scene.entities {
+                let emissive = merged_components(&scene, entity)
+                    .iter()
+                    .find_map(|c| match c {
+                        ComponentData::Sprite { emissive, .. } => Some(*emissive),
+                        _ => None,
+                    })
+                    .expect("brick has a sprite");
+                assert_eq!(emissive, 0.0, "{:?} in {}", entity.name, def.scene_file);
+            }
         }
     }
+}
+
+/// A scene brick's sheet, tag, autoplay clip, sprite offset and depth.
+struct SceneBrick {
+    name: String,
+    sheet: Option<String>,
+    tag: Option<String>,
+    autoplay: Option<String>,
+    offset: (f32, f32),
+    depth: f32,
+}
+
+fn scene_bricks(scene: &SceneData) -> Vec<SceneBrick> {
+    scene
+        .entities
+        .iter()
+        .map(|entity| {
+            let components = merged_components(scene, entity);
+            let (sheet, autoplay) = components
+                .iter()
+                .find_map(|c| match c {
+                    ComponentData::SpriteAnimation { sheet, autoplay, .. } => {
+                        Some((sheet.clone(), autoplay.clone()))
+                    }
+                    _ => None,
+                })
+                .unwrap_or((None, None));
+            let (offset, depth) = components
+                .iter()
+                .find_map(|c| match c {
+                    ComponentData::Sprite { offset, depth, .. } => Some((*offset, *depth)),
+                    _ => None,
+                })
+                .expect("brick has a sprite");
+            let tag = components.iter().find_map(|c| match c {
+                ComponentData::EntityTag { tag } => Some(tag.clone()),
+                _ => None,
+            });
+            SceneBrick {
+                name: entity.name.clone().expect("all level entities are named"),
+                sheet,
+                tag,
+                autoplay,
+                offset,
+                depth,
+            }
+        })
+        .collect()
+}
+
+/// Each row of every shipped wall is its tier of the pyramid, read from the brick's
+/// own sheet — the same path the game resolves a scene brick's food through.
+#[test]
+fn every_shipped_brick_in_row_n_is_row_ns_food() {
+    for mode in BOTH_MODES {
+        for def in roster(mode) {
+            for brick in scene_bricks(&load_roster_level(def)) {
+                let row = brick_row_from_name(&brick.name).expect("brick name should parse");
+                let food = brick.sheet.as_deref().and_then(Food::from_sheet_path);
+                assert_eq!(
+                    food,
+                    Some(food_for_row(row)),
+                    "{} in {} plays {:?}",
+                    brick.name,
+                    def.scene_file,
+                    brick.sheet
+                );
+                assert_eq!(brick_food(&brick.name, brick.sheet.as_deref()), food_for_row(row));
+            }
+        }
+    }
+}
+
+/// A shipped scene's file, its brick count, and how often each tag appears in it.
+type SceneBrickCensus = (&'static str, usize, &'static [(&'static str, usize)]);
+
+/// The re-skin moved the bricks, never added, lost or re-tagged one: each shipped
+/// scene's brick count and tag multiset are the four-level game's.
+#[test]
+fn every_shipped_scene_keeps_its_bricks_and_tags() {
+    let expected: [SceneBrickCensus; 8] = [
+        ("level1.scene.ron", 60, &[("drop_multiball", 1), ("armored2", 2)]),
+        ("level2.scene.ron", 51, &[("drop_multiball", 2), ("armored2", 21), ("armored3", 6)]),
+        (
+            "level3.scene.ron",
+            31,
+            &[("drop_multiball", 6), ("drop_wrecking", 3), ("armored2", 4), ("drop_insiculous", 1)],
+        ),
+        (
+            "level4.scene.ron",
+            54,
+            &[
+                ("drop_insiculous", 2),
+                ("armored3", 16),
+                ("armored2", 10),
+                ("armored2+drop_wrecking", 2),
+                ("drop_multiball", 3),
+                ("drop_wrecking", 1),
+            ],
+        ),
+        ("level1_2p.scene.ron", 60, &[("armored2", 8)]),
+        ("level2_2p.scene.ron", 60, &[("armored2", 16), ("armored3", 20)]),
+        (
+            "level3_2p.scene.ron",
+            60,
+            &[("drop_insiculous", 2), ("drop_multiball", 6), ("drop_wrecking", 2)],
+        ),
+        (
+            "level4_2p.scene.ron",
+            60,
+            &[
+                ("drop_multiball", 4),
+                ("armored2", 16),
+                ("armored2+drop_wrecking", 4),
+                ("armored3", 16),
+                ("drop_insiculous", 4),
+            ],
+        ),
+    ];
+    let all_levels: Vec<&LevelDef> = BOTH_MODES.iter().flat_map(|&mode| roster(mode)).collect();
+    assert_eq!(all_levels.len(), expected.len());
+
+    for (scene_file, count, tags) in expected {
+        let def = all_levels
+            .iter()
+            .find(|def| def.scene_file == scene_file)
+            .unwrap_or_else(|| panic!("{scene_file} is on a roster"));
+        let bricks = scene_bricks(&load_roster_level(def));
+        assert_eq!(bricks.len(), count, "{scene_file}'s brick count");
+
+        let mut found: HashMap<String, usize> = HashMap::new();
+        for brick in bricks.iter().filter_map(|brick| brick.tag.clone()) {
+            *found.entry(brick).or_default() += 1;
+        }
+        let wanted: HashMap<String, usize> =
+            tags.iter().map(|(tag, times)| (tag.to_string(), *times)).collect();
+        assert_eq!(found, wanted, "{scene_file}'s tags");
+    }
+}
+
+/// Armor is foil from the first frame: every `armored{N}` brick autoplays the foil
+/// frame, and every other brick the bare food. The scene is the one mechanism —
+/// nothing at runtime sets the starting frame.
+#[test]
+fn every_armored_brick_starts_in_foil_and_every_other_bare() {
+    for mode in BOTH_MODES {
+        for def in roster(mode) {
+            for brick in scene_bricks(&load_roster_level(def)) {
+                let armored = brick.tag.as_deref().is_some_and(|tag| parse_brick_tag(tag).hits > 1);
+                let clip = if armored { BRICK_ARMORED } else { BRICK_INTACT };
+                assert_eq!(
+                    brick.autoplay.as_deref(),
+                    Some(clip),
+                    "{} in {} (tag {:?})",
+                    brick.name,
+                    def.scene_file,
+                    brick.tag
+                );
+            }
+        }
+    }
+}
+
+/// Every brick draws its cell on its collider (no anchor), at its food sheet's one
+/// depth — a sheet split across depths would punch holes in the sheets between.
+#[test]
+fn every_scene_brick_is_drawn_on_its_cell_at_its_sheets_depth() {
+    for mode in BOTH_MODES {
+        for def in roster(mode) {
+            for brick in scene_bricks(&load_roster_level(def)) {
+                assert_eq!(brick.offset, (0.0, 0.0), "{} in {}", brick.name, def.scene_file);
+                let food = brick.sheet.as_deref().and_then(Food::from_sheet_path).expect("a food sheet");
+                assert_eq!(brick.depth, food.spec().depth, "{} in {}", brick.name, def.scene_file);
+            }
+        }
+    }
+    for spec in &FOODS {
+        assert_eq!(spec.sheet.sprite_offset(), Vec2::ZERO, "{}", spec.sheet.path);
+    }
+}
+
+#[test]
+fn a_brick_whose_sheet_names_no_food_falls_back_to_its_row() {
+    assert_eq!(brick_food("brick_r0_c3", Some("sprites/ai_pyramid_steak_64x32.png")), Food::Steak);
+    assert_eq!(brick_food("brick_r0_c3", Some("sprites/unknown.png")), food_for_row(0));
+    assert_eq!(brick_food("brick_r5_c3", None), food_for_row(5));
+    assert_eq!(food_for_row(0), Food::Donut, "the top row is the pyramid's peak");
+    assert_eq!(food_for_row(BRICK_ROWS - 1), Food::Watermelon, "the bottom row its base");
 }
 
 #[test]
@@ -356,9 +540,13 @@ fn bricks_from_names_builds_bookkeeping_from_world() {
     let mut world = World::new();
     let mut named = HashMap::new();
 
-    let red = Vec4::new(1.0, 0.3, 0.3, 1.0);
+    // A cheese wheel placed on the top row: the sheet, not the row, says what it is.
     let brick = world.create_entity();
-    world.add_component(&brick, Sprite::new(0).with_color(red)).ok();
+    let animation = SpriteAnimation {
+        sheet: Some("sprites/ai_pyramid_cheese_wheel_64x32.png".to_string()),
+        ..SpriteAnimation::default()
+    };
+    world.add_component(&brick, animation).ok();
     named.insert("brick_r0_c0".to_string(), brick);
 
     // Non-brick entities are ignored
@@ -369,7 +557,7 @@ fn bricks_from_names_builds_bookkeeping_from_world() {
     assert_eq!(bricks.len(), 1);
     assert_eq!(bricks[0].entity, brick);
     assert_eq!(bricks[0].value, brick_value(0));
-    assert_eq!(bricks[0].color, red);
+    assert_eq!(bricks[0].food, Food::CheeseWheel);
     // Untagged brick gets the plain defaults
     assert_eq!(bricks[0].hits_left, 1);
     assert_eq!(bricks[0].drop, None);

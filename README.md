@@ -1,9 +1,10 @@
-# Insiculous Breakout
+# The Food Pyramid (Insiculous Breakout)
 
-Neon Breakout built on the [insiculous_2d](../../insiculous_2d) engine — a
-rainbow brick wall, bloom-heavy Geometry-Wars look, a spring-mass-deforming
-grid background, scene-authored levels, power-ups, achievements, 2-player
-co-op, and the engine's signature chaos modes.
+Breakout in the Deion world, built on the [insiculous_2d](../../insiculous_2d)
+engine: Tong's tong as the paddle, Deion the water ball as the ball, a wall of
+six food tiers on a kitchen counter, a deforming grid over it, scene-authored
+levels, candy power-ups, achievements, 2-player co-op, and the engine's
+signature chaos modes.
 
 ## Running
 
@@ -13,7 +14,7 @@ checkouts side by side:
 ```bash
 cargo run                     # play the game
 cargo run --features editor   # run the game inside the engine's visual editor
-cargo test                    # 47 headless tests
+cargo test                    # 74 headless tests
 ```
 
 Assets and saves resolve relative to the executable (falling back to the crate
@@ -27,9 +28,9 @@ Clear every brick. You have 3 lives; one is spent each time every live ball
 is gone. Top rows pay more points than bottom rows, and where the ball
 strikes the paddle controls the bounce — center returns it straight up,
 edges deflect it up to 60°. Special bricks take multiple hits (armored) or
-drop power-ups: **Multiball** (extra ball), **Wrecking** (10s of one-hit-kill
-red-hot balls), or **Insiculous** (both at once) — catch the falling capsule
-with your paddle.
+drop candies: **Multiball** (extra ball), **Wrecking** (10s of one-hit-kill
+frozen Deion), or **Insiculous** (both at once) — catch the falling candy
+with your tong.
 
 | Input | Action |
 |-------|--------|
@@ -55,7 +56,7 @@ level is bound to a chaos mode — picking the level picks the chaos:
 | Level | Mode | Effect |
 |-------|------|--------|
 | CLASSIC | Normal | The classic wall, a taste of armor |
-| THE VAULT | Insane | Armored fortress; ball speeds up per paddle hit |
+| THE VAULT | Insane | A fortress of foil; ball speeds up per paddle hit |
 | PINATA | Ridiculous | Rains power-ups; every serve launches two balls |
 | THE GAUNTLET | Insiculous | Everything at once |
 
@@ -98,31 +99,46 @@ The same build runs in the browser at [beinsiculous.com/playground/breakout/](ht
 ```
 src/
 ├── main.rs           # Game trait impl, window/config setup, editor wiring
-├── constants.rs      # All gameplay tuning values (sizes, speeds, layout)
-├── types.rs          # BreakoutGame state, GameState, GameMode, Brick, PickupKind
-├── spawning.rs       # Entity creation (paddles, ball, walls, sensors, fallback grid)
+├── constants.rs      # The sheets, the six foods, all tuning values, draw depths
+├── types.rs          # BreakoutGame state, Sheets, GameState, Facing, clip names, Brick
+├── spawning.rs       # Entity creation (paddles and tongs, ball, walls and strips,
+│                     #   counter, backdrop, one-shots, fallback grid)
 ├── levels.rs         # Level rosters, scene loading, brick name/tag parsing
 ├── gameplay/         # Match loop: mod (orchestration+pause), paddles, balls,
 │                     #   bricks (brick_bounce_velocity), flow
 ├── power_ups.rs      # What Multiball / Wrecking / Insiculous pickups do
 ├── menu.rs           # Title / level select / achievements input, start_game
-├── effects.rs        # Deforming grid background, particle bursts
+├── effects.rs        # Particle bursts
 ├── chaos_theme.rs    # Per-chaos-mode color themes
 ├── achievements.rs   # Achievement definitions
 ├── drawing.rs        # UI drawing (menus, HUD, pause overlay)
 ├── gameplay_tests.rs # Gameplay rule + physics regression tests
-└── levels_tests.rs   # Shipped-scene validation tests
+├── levels_tests.rs   # Shipped-scene validation tests
+├── flow_tests.rs     # The match through the engine's headless harness
+└── test_support.rs   # Shared fixtures: synced sheets, the harness
 assets/scenes/        # level1-4 + level1-4_2p scene RON files
+assets/sprites/       # Synced art: sync.list and its PNG + .sheet.ron copies
+scripts/regenerate_levels.py  # One-off generator of the eight scenes (--check)
 ```
 
 ## The Deion Pivot: The Food Pyramid
 
 The engine-wide **Deion pivot** re-skins every game into the world of Deion
 the Insiculous (see `deion_assets/DEION_STYLE.md` via the repo's symlink).
-Breakout's planned identity: **climb the food pyramid**. The game is still
-neon today — this is the design note for the Phase G re-skin.
+Breakout's re-skin **landed 2026-09-25** on today's four-level roster:
 
-The level select becomes the 1992 USDA food pyramid, climbed from the base:
+- **The wall is the pyramid, tier by tier**: donut on the top row, then
+  steak, cheese wheel, baguette, broccoli, and watermelon at the base — the
+  top row still pays the most. Armored bricks are foil-wrapped and the foil
+  tears at their last hit.
+- **Cast**: the paddle is **Tong's tong** lying on the counter, its mouth
+  leading the way it moves, scowling when a life is lost; the ball is
+  **Deion** as a water ball, frozen solid while the wrecking candy runs.
+- **Power-ups** are wrapped candies that unwrap where they are caught.
+- The game is played on Tong's kitchen counter, the same court and rails.
+
+The next batch climbs the pyramid (`breakout#3`): the level select becomes
+the 1992 USDA food pyramid, climbed from the base.
 
 ```
                       ▲
@@ -138,24 +154,16 @@ The level select becomes the 1992 USDA food pyramid, climbed from the base:
 
 - **Progression**: clear L1 + L2 to unlock L3; clearing L3 opens a choice
   of L4 or L5; L6 crowns the run.
-- **Brick themes per level**: fruit bricks, veggie bricks, baguette/grain
-  bricks, cheese-wheel bricks, steak/protein bricks, donut/candy bricks.
-- **Cast**: the paddle becomes a **tong character** — living kitchen tongs
-  with a face, whose rounded grip is the rounded paddle surface (shared
-  with Pong's re-skin). The ball is **Deion** himself; the wrecking-ball
-  power stays as his frozen ice form.
-- **Power-ups** re-theme per level where a fun fit exists — an open design
-  space, kept deliberately loose.
+- **Power-ups** may re-theme per level where a fun fit exists — an open
+  design space, kept deliberately loose.
 - The pyramid select screen and unlock persistence are new scope vs
-  today's linear roster — design lands at re-skin time; only the theme is
-  committed.
+  today's linear roster.
 
 ### Open questions
 
 - Must BOTH L4 and L5 be cleared before L6, or does either one unlock the
   finale?
 - Which per-level power-up themes actually earn their keep?
-- Brick durability mapping — e.g. foil-wrapped armored bricks?
 - How do the 2P co-op scenes map onto the pyramid?
 
 Answered questions move up into the theme spec and get DELETED from this

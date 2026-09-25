@@ -4,8 +4,9 @@ use engine_core::prelude::*;
 use crate::chaos_theme::theme_for;
 use crate::constants::*;
 use crate::effects;
+use crate::spawning::spawn_effect;
 use crate::types::*;
-use super::{entity_position, entity_x};
+use super::{entity_position, entity_x, ripple_grid, set_clip_state};
 
 /// Re-aim `dir` if it is too horizontal, preserving its left/right and
 /// up/down senses. Keeps the ball from shuttling between the side walls.
@@ -18,6 +19,15 @@ pub(crate) fn enforce_min_vertical(dir: Vec2) -> Vec2 {
         dir.x.signum() * (1.0 - MIN_VERTICAL_FRACTION * MIN_VERTICAL_FRACTION).sqrt(),
         y_sign * MIN_VERTICAL_FRACTION,
     )
+}
+
+/// Where a lost ball's splash is drawn: at the edge it was lost past, just inside the
+/// window, because the loss sensor fires with the ball's centre already outside it.
+pub(crate) fn splash_y(side: PaddleSide) -> f32 {
+    match side {
+        PaddleSide::Bottom => -(WIN_H / 2.0 - SPLASH_EDGE_INSET),
+        PaddleSide::Top => WIN_H / 2.0 - SPLASH_EDGE_INSET,
+    }
 }
 
 /// Resting Y of a served ball: just inside the serving paddle, toward the
@@ -38,6 +48,12 @@ impl BreakoutGame {
             PaddleSide::Bottom => self.paddle,
             PaddleSide::Top => self.paddle_top.or(self.paddle),
         }
+    }
+
+    /// Where a served ball rests: on the serving paddle, toward the field.
+    pub(crate) fn serve_position(&self, world: &World) -> Vec2 {
+        let x = self.serving_paddle().map(|paddle| entity_x(world, paddle)).unwrap_or(0.0);
+        Vec2::new(x, serving_glue_y(self.serving_side))
     }
 
     /// While serving, park the ball on the serving paddle every frame.
@@ -70,17 +86,11 @@ impl BreakoutGame {
         if self.chaos_mode.is_ridiculous() {
             let pos = entity_position(ctx.world, ball)
                 .unwrap_or(Vec2::new(0.0, serving_glue_y(self.serving_side)));
-            let extra = self.spawn_ball(ctx.world);
-            let theme = theme_for(self.chaos_mode);
-            if let Some(t) = ctx.world.get_mut::<Transform2D>(extra) {
-                t.position = pos;
-            }
-            if let Some(s) = ctx.world.get_mut::<Sprite>(extra) {
-                s.color = theme.accent_color;
-            }
+            let extra = self.spawn_ball(ctx.world, "Deion (extra)", pos);
             let dir2 = Vec2::new(-angle.sin(), y_sign * angle.cos());
             self.physics.set_velocity(extra, dir2 * speed, 0.0);
             self.extra_balls.push(extra);
+            self.apply_ball_visuals(ctx.world);
         }
 
         self.state = GameState::Playing;
@@ -146,20 +156,14 @@ impl BreakoutGame {
         let mut last_lost_side = PaddleSide::Bottom;
         for (ball, side) in lost {
             last_lost_side = side;
-            let fallback_y = match side {
-                PaddleSide::Bottom => -WIN_H / 2.0,
-                PaddleSide::Top => WIN_H / 2.0,
-            };
-            let pos = entity_position(ctx.world, ball).unwrap_or(Vec2::new(0.0, fallback_y));
-            ctx.particles.spawn_burst(pos, &effects::ball_lost_burst(&theme, self.tex_id));
-            if let Some(grid) = self.grid.as_mut() {
-                grid.apply_impulse(&GridImpulse::Radial {
-                    position: pos,
-                    strength: GRID_IMPULSE_BALL_LOST_STRENGTH,
-                    radius: GRID_IMPULSE_BALL_LOST_RADIUS,
-                    attractive: false,
-                });
-            }
+            let ball_x = entity_position(ctx.world, ball)
+                .map(|p| p.x)
+                .filter(|x| x.is_finite())
+                .unwrap_or(0.0);
+            let splash_at = Vec2::new(ball_x, splash_y(side));
+            self.spawn_splash(ctx.world, ball, splash_at);
+            ctx.particles.spawn_burst(splash_at, &effects::ball_lost_burst(&theme, self.sheets.white));
+            ripple_grid(ctx.world, splash_at, GRID_IMPULSE_BALL_LOST_STRENGTH, GRID_IMPULSE_BALL_LOST_RADIUS);
 
             if Some(ball) == self.ball {
                 self.ball = self.extra_balls.pop();
@@ -171,8 +175,12 @@ impl BreakoutGame {
 
         if self.ball.is_some() { return; }
 
-        // All balls gone — spend a life. Wrecking dies with the volley
-        // (consistent with the speed_mult reset below).
+        // All balls gone — spend a life, and the tong it fell past scowls. Only now:
+        // the scowl's arms shudder wider than the paddle's capsule, so it may play
+        // only while nothing is in flight to bounce off air.
+        self.scowl(ctx.world, last_lost_side);
+
+        // Wrecking dies with the volley (consistent with the speed_mult reset below).
         self.lives = self.lives.saturating_sub(1);
         self.combo = 0;
         self.speed_mult = 1.0;
@@ -185,13 +193,42 @@ impl BreakoutGame {
         }
 
         self.serving_side = super::flow::serve_side_after_loss(self.mode, last_lost_side);
-        let fresh = self.spawn_ball(ctx.world);
-        let theme = theme_for(self.chaos_mode);
-        if let Some(s) = ctx.world.get_mut::<Sprite>(fresh) {
-            s.color = theme.accent_color;
-        }
+        // Spawned on the serving paddle, not glued there next frame: the frame this
+        // one renders would otherwise draw Deion at the other end of the court.
+        let fresh = self.spawn_ball(ctx.world, "Deion", self.serve_position(ctx.world));
         self.ball = Some(fresh);
         self.state = GameState::Serving;
+    }
+
+    /// Spawn a lost ball's splash at `position`, from the sheet the ball wore — the
+    /// water ball splashes, the frozen one shatters — at that sheet's depth.
+    fn spawn_splash(&mut self, world: &mut World, ball: EntityId, position: Vec2) {
+        let frozen = world
+            .get::<SpriteAnimation>(ball)
+            .is_some_and(|animation| animation.sheet.as_deref() == Some(BALL_ICE.path));
+        let (spec, sheet, depth) = if frozen {
+            (&BALL_ICE, &self.sheets.ball_ice, BALL_ICE_DEPTH)
+        } else {
+            (&BALL_WATER, &self.sheets.ball_water, BALL_WATER_DEPTH)
+        };
+        let splash = spawn_effect(world, "Splash", spec, sheet, depth, position, BALL_HURT);
+        self.transient_visuals.push(splash);
+    }
+
+    /// Play the scowl on the tong guarding `side`. Solo has only the bottom tong, so a
+    /// ball that escaped upward still scowls there.
+    fn scowl(&self, world: &mut World, side: PaddleSide) {
+        let tong = match side {
+            PaddleSide::Bottom => self.tong,
+            PaddleSide::Top => self.tong_top.or(self.tong),
+        };
+        let Some(tong) = tong else { return };
+        let Some(state) = world.get::<ClipStateMachine>(tong).map(|machine| machine.state().to_string()) else {
+            return;
+        };
+        if let Some((_, facing)) = Facing::split(&state) {
+            set_clip_state(world, tong, &tong_state(TONG_SCORED_ON, facing));
+        }
     }
 
     pub(crate) fn destroy_all_balls(&mut self, world: &mut World) {

@@ -5,7 +5,7 @@ use crate::chaos_theme::theme_for;
 use crate::constants::*;
 use crate::effects;
 use crate::types::*;
-use super::entity_position;
+use super::{entity_position, ripple_grid};
 
 /// Velocity a ball should leave a destroyed brick with.
 ///
@@ -25,7 +25,7 @@ pub(crate) fn brick_bounce_velocity(ball_pos: Vec2, vel: Vec2, brick_pos: Vec2) 
     // the ball is closest to; ties go to vertical (breakout balls travel
     // mostly vertically).
     let mut v = vel;
-    if d.y.abs() / (BRICK_H / 2.0) >= d.x.abs() / (BRICK_W / 2.0) {
+    if d.y.abs() / (BRICK_CELL.y / 2.0) >= d.x.abs() / (BRICK_CELL.x / 2.0) {
         v.y = v.y.abs() * away_y;
     } else {
         v.x = v.x.abs() * away_x;
@@ -79,17 +79,16 @@ impl BreakoutGame {
                 BrickHitOutcome::Damaged { hits_left } => {
                     self.bricks[i].hits_left = hits_left;
                     let entity = self.bricks[i].entity;
-                    // Visible battle damage: dim the tint and the glow.
-                    if let Some(s) = ctx.world.get_mut::<Sprite>(entity) {
-                        s.color.x *= BRICK_DAMAGE_COLOR_FACTOR;
-                        s.color.y *= BRICK_DAMAGE_COLOR_FACTOR;
-                        s.color.z *= BRICK_DAMAGE_COLOR_FACTOR;
-                        s.emissive *= BRICK_DAMAGE_EMISSIVE_FACTOR;
+                    // The foil tears when one hit is left.
+                    if hits_left == 1 {
+                        if let Some(animation) = ctx.world.get_mut::<SpriteAnimation>(entity) {
+                            let _ = animation.play(BRICK_ARMOR_DAMAGED);
+                        }
                     }
                     if let Some(pos) = entity_position(ctx.world, entity) {
                         ctx.particles.spawn_burst(
                             pos,
-                            &effects::armor_hit_burst(self.bricks[i].color, &theme, self.tex_id),
+                            &effects::armor_hit_burst(FOIL_BURST_COLOR, &theme, self.sheets.white),
                         );
                     }
                 }
@@ -107,7 +106,8 @@ impl BreakoutGame {
     }
 
     /// Tear down a destroyed brick: reflect the balls that hit it, burst
-    /// particles, kick the grid, drop its pickup, and remove the entity.
+    /// particles in its food's colour, ripple the grid, drop its candy, and
+    /// remove the entity.
     fn destroy_brick_entity(
         &mut self,
         ctx: &mut GameContext,
@@ -134,15 +134,9 @@ impl BreakoutGame {
                 }
             }
 
-            ctx.particles.spawn_burst(pos, &effects::brick_burst(brick.color, theme, self.tex_id));
-            if let Some(grid) = self.grid.as_mut() {
-                grid.apply_impulse(&GridImpulse::Radial {
-                    position: pos,
-                    strength: GRID_IMPULSE_BRICK_DESTROY_STRENGTH,
-                    radius: GRID_IMPULSE_BRICK_DESTROY_RADIUS,
-                    attractive: false,
-                });
-            }
+            let burst_color = brick.food.spec().burst_color;
+            ctx.particles.spawn_burst(pos, &effects::brick_burst(burst_color, theme, self.sheets.white));
+            ripple_grid(ctx.world, pos, GRID_IMPULSE_BRICK_DESTROY_STRENGTH, GRID_IMPULSE_BRICK_DESTROY_RADIUS);
 
             if let Some(kind) = brick.drop {
                 self.spawn_pickup(ctx.world, kind, pos);

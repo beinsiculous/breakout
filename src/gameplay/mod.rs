@@ -1,6 +1,6 @@
-//! Match gameplay, split by concern: paddle control and bounces
-//! (`paddles`), ball serving/velocity/loss (`balls`), brick hits and
-//! destruction (`bricks`), state transitions and visibility (`flow`).
+//! Match gameplay, split by concern: paddle control, bounces and the tongs drawn on
+//! them (`paddles`), ball serving/velocity/loss (`balls`), brick hits and destruction
+//! (`bricks`), state transitions and visibility (`flow`).
 
 mod balls;
 mod bricks;
@@ -19,6 +19,7 @@ pub(crate) use flow::serve_side_after_loss;
 pub(crate) use paddles::{paddle_bounce_direction, paddle_bounce_direction_for};
 
 use engine_core::prelude::*;
+use crate::constants::*;
 use crate::types::*;
 
 pub(super) fn entity_position(world: &World, entity: EntityId) -> Option<Vec2> {
@@ -27,6 +28,21 @@ pub(super) fn entity_position(world: &World, entity: EntityId) -> Option<Vec2> {
 
 pub(super) fn entity_x(world: &World, entity: EntityId) -> f32 {
     world.get::<Transform2D>(entity).map(|t| t.position.x).unwrap_or(0.0)
+}
+
+/// Move `entity`'s clip machine to `state`. An entity without one is left alone, as is
+/// an unknown state name (the machine warns and holds its ground). Re-asserting the
+/// state the machine is already in does not restart its clip.
+pub(crate) fn set_clip_state(world: &mut World, entity: EntityId, state: &str) {
+    if let Some(machine) = world.get_mut::<ClipStateMachine>(entity) {
+        let _ = machine.transition_to(state);
+    }
+}
+
+/// Push a radial shockwave into the backdrop grid. The engine applies it to every
+/// backdrop on its next running frame.
+pub(super) fn ripple_grid(world: &mut World, position: Vec2, strength: f32, radius: f32) {
+    ripple(world, GridImpulse::Radial { position, strength, radius, attractive: false });
 }
 
 impl BreakoutGame {
@@ -54,17 +70,19 @@ impl BreakoutGame {
                 PauseAction::Idle => {}
             }
             if self.pause.is_active() {
-                // Keep the frozen scene visible under the pause overlay:
-                // re-emit the grid without advancing it (dt 0).
-                engine_core::grid::step_and_emit_grid(
-                    self.grid.as_mut(), ctx.world, ctx.lines, 0.0, self.debug_colliders,
-                );
+                // The engine holds the backdrop grid still with the rest of the world
+                // (it steps on the time-scaled delta), so only the collider overlay is
+                // still ours to draw under the pause overlay.
+                self.emit_collider_overlay(ctx);
                 return;
             }
         }
 
         self.update_paddles(ctx);
         self.physics.update(ctx.world, ctx.delta_time);
+        // The tongs are art beside their bodies: placed where physics left each
+        // paddle, so the drawn tong is never a frame behind its collider.
+        self.place_tongs(ctx.world);
 
         // Drain this frame's collision events once (take = the buffer is
         // consumed, not borrowed). Every consumer below shares this Vec, and
@@ -83,17 +101,15 @@ impl BreakoutGame {
         self.check_ball_loss(ctx, &collisions);
         self.check_win_condition(ctx);
 
-        // Step + render the deforming grid after gameplay so it reacts to
-        // this frame's collisions.
-        self.step_and_emit_grid(ctx);
+        self.emit_collider_overlay(ctx);
     }
 
-    /// Advance the spring-mass grid and push its line vertices into the
-    /// engine's per-frame line buffer. When the collider-debug overlay is
-    /// enabled, the collider outlines are pushed on top.
-    fn step_and_emit_grid(&mut self, ctx: &mut GameContext) {
-        engine_core::grid::step_and_emit_grid(
-            self.grid.as_mut(), ctx.world, ctx.lines, ctx.delta_time, self.debug_colliders,
-        );
+    /// Outline every collider in bright magenta while F1 is on. The backdrop grid is
+    /// the engine's to draw, so the collider overlay is the only line-buffer work the
+    /// game owns — and it draws last, over the grid and the art.
+    pub(crate) fn emit_collider_overlay(&self, ctx: &mut GameContext) {
+        if self.debug_colliders {
+            debug::draw_colliders(ctx.world, ctx.lines, DEBUG_COLLIDER_COLOR, DEBUG_COLLIDER_EMISSIVE);
+        }
     }
 }

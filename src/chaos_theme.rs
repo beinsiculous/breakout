@@ -1,7 +1,9 @@
-//! Breakout's chaos theming: the engine's shared [`ChaosTheme`] palette with
-//! this game's Normal-mode look layered on top (navy-tinted background and
-//! slightly cooler walls/grid). The Insane/Ridiculous/Insiculous palettes
-//! are the engine defaults.
+//! The Food Pyramid's chaos theming: the engine's shared [`ChaosTheme`] palette
+//! with this game's Normal-mode look layered on top. The counter and its rails are
+//! art and never tinted, so a theme colours only the backdrop grid, the particles
+//! and the menus — `MenuStyle::from_theme` still reads the background and structure
+//! colours for its panels. The Insane/Ridiculous/Insiculous palettes are the engine
+//! defaults.
 
 use engine_core::prelude::*;
 

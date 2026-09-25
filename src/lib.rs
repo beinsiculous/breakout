@@ -12,6 +12,8 @@ mod chaos_theme;
 mod constants;
 mod drawing;
 mod effects;
+#[cfg(test)]
+mod flow_tests;
 mod gameplay;
 #[cfg(test)]
 mod gameplay_tests;
@@ -21,6 +23,8 @@ mod levels_tests;
 mod menu;
 mod power_ups;
 mod spawning;
+#[cfg(test)]
+mod test_support;
 mod types;
 
 #[cfg(target_arch = "wasm32")]
@@ -45,11 +49,23 @@ pub use types::BreakoutGame;
 /// current working directory — and the level scenes are read through the
 /// same base, so a wrong base costs every brick layout too.
 pub fn game_config(asset_base: &str) -> GameConfig {
-    GameConfig::new("Insiculous Breakout")
+    GameConfig::new("The Food Pyramid")
         .with_size(WIN_W as u32, WIN_H as u32)
         .with_clear_color(0.0, 0.0, 0.0, 1.0)
         .with_fps(60)
+        // The art is 1x with nearest filtering, so snapping every sprite's origin to a
+        // whole device pixel is what keeps it crisp at this window size.
+        .with_pixel_snap(true)
         .with_asset_base_path(asset_base)
+}
+
+/// Load one synced sheet by the path its spec names. Fail-loud: the sheets ship with
+/// the game, so a missing or malformed one is a broken build rather than a game that
+/// silently draws nothing.
+fn load_sheet(assets: &mut AssetManager, spec: &SheetSpec) -> SpriteSheet {
+    assets
+        .load_sprite_sheet(spec.path)
+        .unwrap_or_else(|error| panic!("{} does not load: {error}", spec.path))
 }
 
 impl Game for BreakoutGame {
@@ -66,28 +82,35 @@ impl Game for BreakoutGame {
         }
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
-        self.tex_id = tex.id;
-        // Relative paths resolve against the asset base path set in main().
-        self.ball_tex_id = ctx.assets.load_texture("ball_8px.png")
-            .expect("missing assets/ball_8px.png").id;
+        self.sheets.white = tex.id;
 
-        let theme = theme_for(self.chaos_mode);
-        self.background = Some(spawn_background(
-            ctx.world, tex.id, theme.bg_color, Vec2::new(WIN_W, WIN_H)));
+        // Every sheet's path, cell and measured anchor is in `constants.rs`; the PNG and
+        // its sidecar are the synced copies under `assets/sprites/`.
+        self.sheets.foods = std::array::from_fn(|index| load_sheet(ctx.assets, &FOODS[index].sheet));
+        self.sheets.ball_water = load_sheet(ctx.assets, &BALL_WATER);
+        self.sheets.ball_ice = load_sheet(ctx.assets, &BALL_ICE);
+        self.sheets.candy_multiball = load_sheet(ctx.assets, &CANDY_MULTIBALL);
+        self.sheets.candy_wrecking = load_sheet(ctx.assets, &CANDY_WRECKING);
+        self.sheets.candy_insiculous = load_sheet(ctx.assets, &CANDY_INSICULOUS);
+        self.sheets.tong_left = load_sheet(ctx.assets, &TONG_LEFT);
+        self.sheets.tong_right = load_sheet(ctx.assets, &TONG_RIGHT);
+        self.sheets.court = load_sheet(ctx.assets, &COURT_TILE);
+        self.sheets.court_edge = load_sheet(ctx.assets, &COURT_EDGE);
 
-        // Walls, sensors, and paddles are mode-dependent (co-op opens the
-        // top edge for a second paddle), so the whole playfield structure is
-        // built by rebuild_playfield() at every match start. Solo layout
-        // here just so the editor sees a populated scene before play.
+        // The counter first: the surface everything else stands on. It and the grid
+        // over it stay up under the menus, as Tong's court does.
+        self.court = Some(spawning::spawn_court(ctx.world, &self.sheets.court));
+        self.backdrop = Some(spawning::spawn_backdrop(ctx.world, &theme_for(self.chaos_mode)));
+
+        // Walls, sensors, paddles and their tongs are mode-dependent (co-op opens the
+        // top edge for a second paddle), so the whole playfield structure is built by
+        // rebuild_playfield() at every match start. Solo layout here just so the
+        // editor sees a populated scene before play.
         self.rebuild_playfield(ctx.world, GameMode::SinglePlayer);
 
         // Brick layouts are authored in per-level scenes (editor-editable);
         // start_game() loads the selected level each match, falling back to
         // the generated grid if the file is missing.
-
-        // Bricks and ball spawn fresh on every `start_game()`. Build the
-        // deforming grid backdrop now so it exists before the first match.
-        self.grid = Some(default_playfield_grid(&theme));
     }
 
     fn update(&mut self, ctx: &mut GameContext) {

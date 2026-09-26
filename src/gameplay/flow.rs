@@ -70,12 +70,14 @@ impl BreakoutGame {
         self.state = GameState::TitleScreen { selection: 0 };
     }
 
-    /// Put each tong back at rest, closed in the facing it holds — a scowl a quit
-    /// interrupted does not resume under the menus.
-    pub(crate) fn rest_tongs(&self, world: &mut World) {
+    /// Put each tong back at rest, closed in the facing it holds, and ask each jaw for
+    /// nothing but shut — a scowl or a bite a quit interrupted does not resume under the
+    /// menus.
+    pub(crate) fn rest_tongs(&mut self, world: &mut World) {
+        self.hold_jaws_shut();
         for (tong, side) in [(self.tong, PaddleSide::Bottom), (self.tong_top, PaddleSide::Top)] {
             let Some(tong) = tong else { continue };
-            let rest = tong_state(TONG_CLOSED, self.tong_facing[side.index()]);
+            let rest = tong_state(TONG_CLOSED, self.tongs[side.index()].facing);
             if let Some(machine) = world.get_mut::<ClipStateMachine>(tong) {
                 let _ = machine.transition_to(&rest);
             }

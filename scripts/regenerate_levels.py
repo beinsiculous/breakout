@@ -33,7 +33,7 @@ BRICK_COLS = 10
 BRICK_CELL_WIDTH = 64
 BRICK_CELL_HEIGHT = 32
 BRICK_GAP = 4
-BRICK_TOP_Y = 240
+BRICK_TOP_Y = 222
 BRICK_TOP_Y_2P = 90
 
 # Row 0 is the top of the wall and of the pyramid; row 5 its base. Each food's

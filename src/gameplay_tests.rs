@@ -283,7 +283,12 @@ fn ball_reflects_off_every_brick_it_destroys() {
                     }
                     // The bug: ball hit the brick from below and is
                     // STILL climbing afterwards → it ploughed through.
-                    let was_below = ball_pos.y < brick_pos.y - BRICK_CELL.y / 2.0;
+                    // Under the brick means under its column too: a ball
+                    // riding the flank channel beside the wall glances the
+                    // outer brick's bottom corner and climbs on, beside
+                    // the wall rather than into it.
+                    let was_below = ball_pos.y < brick_pos.y - BRICK_CELL.y / 2.0
+                        && (ball_pos.x - brick_pos.x).abs() < BRICK_CELL.x / 2.0;
                     if was_below && new_vel.y > 1.0 {
                         ploughs += 1;
                     }

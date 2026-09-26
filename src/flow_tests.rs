@@ -83,7 +83,7 @@ fn losing_one_ball_of_two_plays_no_scowl_and_losing_the_last_does() {
     harness.steps(30, FRAME);
     assert_eq!(harness.game().ball, Some(second), "the other ball plays on");
     assert_eq!(harness.game().lives, STARTING_LIVES);
-    assert!(state_of(harness.world(), tong).starts_with(TONG_CLOSED), "no scowl while a ball is in flight");
+    assert!(!state_of(harness.world(), tong).starts_with(TONG_SCORED_ON), "no scowl while a ball is in flight");
 
     send_past_the_bottom(&mut harness, second);
     step_until_a_life_is_lost(&mut harness);
@@ -244,7 +244,7 @@ fn a_restart_and_a_quit_rest_both_tongs_closed() {
             let tong = tong.expect("co-op has both tongs");
             assert_eq!(
                 state_of(harness.world(), tong),
-                tong_state(TONG_CLOSED, game.tong_facing[side.index()])
+                tong_state(TONG_CLOSED, game.tongs[side.index()].facing)
             );
         }
     };

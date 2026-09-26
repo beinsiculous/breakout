@@ -17,6 +17,9 @@ mod flow_tests;
 mod gameplay;
 #[cfg(test)]
 mod gameplay_tests;
+mod jaw;
+#[cfg(test)]
+mod jaw_tests;
 mod levels;
 #[cfg(test)]
 mod levels_tests;

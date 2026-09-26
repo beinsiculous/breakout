@@ -87,11 +87,62 @@ pub(crate) fn tong_state(clip: &str, facing: Facing) -> String {
     format!("{clip}_{}", facing.suffix())
 }
 
+/// What a tong's jaw is asked for. A player's ask is held until a device asks the other
+/// way, so this is the jaw's intent rather than a per-frame pulse.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Jaw {
+    Open,
+    Closed,
+}
+
+impl Jaw {
+    /// The clip a jaw resting in this position plays.
+    pub(crate) fn clip(self) -> &'static str {
+        match self {
+            Jaw::Open => TONG_OPEN,
+            Jaw::Closed => TONG_CLOSED,
+        }
+    }
+}
+
+/// One tong's control state, kept by `PaddleSide::index`: which way its mouth is asked
+/// to point, what its jaw is asked for, and what the frame's gameplay read off it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct TongControl {
+    /// The facing the tong was last asked for. A tong mid-clip takes it at its next rest.
+    pub(crate) facing: Facing,
+    /// The jaw the player last asked for. Recorded whether or not the machine can act on
+    /// it, and taken at the machine's next rest.
+    pub(crate) jaw: Jaw,
+    /// The launch's `opening`, still to land: it outranks the player's ask, and until
+    /// the jaw rests open no ask is read.
+    pub(crate) launch_opening: bool,
+    /// Where the jaw axis leaned last frame — toward the field, away, or inside the dead
+    /// zone. An axis asks only on the frame it leaves for a side, never again while held.
+    pub(crate) axis_lean: Option<Jaw>,
+    /// Whether the tong's animation was drawing a `closing` frame when this frame's
+    /// collider was dressed: what makes a contact a chomp.
+    pub(crate) drawing_closing: bool,
+}
+
+impl TongControl {
+    const fn new(facing: Facing) -> Self {
+        Self { facing, jaw: Jaw::Closed, launch_opening: false, axis_lean: None, drawing_closing: false }
+    }
+}
+
+/// Both tongs' controls as a match starts them: each tong facing the way Tong draws it,
+/// the left tong's `_up` and the right tong's `_down`, its jaw shut.
+pub(crate) const DEFAULT_TONGS: [TongControl; 2] = [TongControl::new(Facing::Up), TongControl::new(Facing::Down)];
+
 // --- the clip names -----------------------------------------------------------------
 // The contract with the sheets' sidecars (`assets/sprites/*.sheet.ron`): a rename there
 // is a rename here, or the machine warns and holds its ground.
 
+pub(crate) const TONG_OPEN: &str = "open";
+pub(crate) const TONG_CLOSING: &str = "closing";
 pub(crate) const TONG_CLOSED: &str = "closed";
+pub(crate) const TONG_OPENING: &str = "opening";
 pub(crate) const TONG_SCORED_ON: &str = "scored_on";
 pub(crate) const BALL_IDLE: &str = "idle";
 pub(crate) const BALL_HURT: &str = "hurt";
@@ -203,11 +254,16 @@ pub struct BreakoutGame {
     pub(crate) tong: Option<EntityId>,
     /// The tong drawn on Player 2's paddle. Present only in co-op.
     pub(crate) tong_top: Option<EntityId>,
-    /// The facing each tong was last asked for, by `PaddleSide::index`. A tong mid
-    /// scowl takes it when the scowl ends.
-    pub(crate) tong_facing: [Facing; 2],
+    /// Each tong's facing and jaw, by `PaddleSide::index`.
+    pub(crate) tongs: [TongControl; 2],
+    /// Whether the right mouse button — Player 1's bite — was down last frame: the
+    /// input reports a press, not a release, so the release is this going false.
+    pub(crate) bite_button_was_down: bool,
     pub(crate) ball: Option<EntityId>,
     pub(crate) extra_balls: Vec<EntityId>,
+    /// Balls a chomp sent out, running faster until their next plain paddle hit or
+    /// their loss.
+    pub(crate) chomped: Vec<EntityId>,
     pub(crate) bricks: Vec<Brick>,
     /// Index into the active roster (`levels::LEVELS` / `LEVELS_2P`) of the
     /// level being played. The scene is loaded fresh on every match start
@@ -257,10 +313,6 @@ pub struct BreakoutGame {
     pub(crate) pause: PauseMenu,
 }
 
-/// The facings the tongs are spawned in: each tong as Tong draws it, the left tong's
-/// `_up` and the right tong's `_down`.
-pub(crate) const DEFAULT_TONG_FACING: [Facing; 2] = [Facing::Up, Facing::Down];
-
 impl Default for BreakoutGame {
     fn default() -> Self {
         Self {
@@ -270,9 +322,11 @@ impl Default for BreakoutGame {
             paddle_top: None,
             tong: None,
             tong_top: None,
-            tong_facing: DEFAULT_TONG_FACING,
+            tongs: DEFAULT_TONGS,
+            bite_button_was_down: false,
             ball: None,
             extra_balls: Vec::new(),
+            chomped: Vec::new(),
             bricks: Vec::new(),
             selected_level: 0,
             mode: GameMode::SinglePlayer,

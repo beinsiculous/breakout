@@ -149,9 +149,9 @@ impl BreakoutGame {
         }
     }
 
-    /// Spawn a multiball-granted extra ball above the paddle, launched
-    /// upward at a lightly randomized angle. Fizzles silently at the cap or
-    /// outside active play.
+    /// Spawn a multiball-granted extra ball above the paddle, clear of every pose its
+    /// jaw can draw, launched upward at a lightly randomized angle. Fizzles silently at
+    /// the cap or outside active play.
     fn try_spawn_extra_ball(&mut self, ctx: &mut GameContext) {
         if !multiball_allowed(self.extra_balls.len()) || self.state != GameState::Playing {
             return;
@@ -161,7 +161,7 @@ impl BreakoutGame {
             .and_then(|p| ctx.world.get::<Transform2D>(p).map(|t| t.position.x))
             .unwrap_or(0.0);
 
-        let ball = self.spawn_ball(ctx.world, "Deion (extra)", Vec2::new(paddle_x, PADDLE_Y + SERVE_OFFSET_Y));
+        let ball = self.spawn_ball(ctx.world, "Deion (extra)", Vec2::new(paddle_x, PADDLE_Y + EXTRA_BALL_OFFSET_Y));
         let angle = (hash_f32(self.frame_count.wrapping_add(7)) - 0.5) * 0.8;
         let dir = Vec2::new(angle.sin(), angle.cos());
         let speed = (BALL_SPEED * self.speed_mult).min(BALL_MAX_SPEED);

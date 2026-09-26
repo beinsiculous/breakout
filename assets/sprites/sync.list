@@ -10,7 +10,7 @@
 # check_no_ai_assets.sh gate must still find them until Jesse's cleanup pass
 # turns them into hand-cleaned masters outside deion_assets/ai/.
 #
-# deion_assets 8ca6e9b4716fcb5f2bd14ea81fffca1313a3a15f
+# deion_assets f8c9975c54c30fcbcda9e08251292c2141dc76df
 ai/sidescroller/props/pyramid_watermelon/ai_pyramid_watermelon_64x32.png
 ai/sidescroller/props/pyramid_broccoli/ai_pyramid_broccoli_64x32.png
 ai/sidescroller/props/pyramid_baguette/ai_pyramid_baguette_64x32.png
@@ -20,8 +20,8 @@ ai/sidescroller/props/pyramid_donut/ai_pyramid_donut_64x32.png
 ai/sidescroller/props/pyramid_multiball_candy/ai_pyramid_multiball_candy_48x48.png
 ai/sidescroller/props/pyramid_wrecking_candy/ai_pyramid_wrecking_candy_48x48.png
 ai/sidescroller/props/pyramid_insiculous_candy/ai_pyramid_insiculous_candy_48x48.png
-ai/sidescroller/deion_16/ai_deion_16.png
-ai/sidescroller/deion_ice_16/ai_deion_ice_16.png
+ai/sidescroller/deion_32/ai_deion_32.png
+ai/sidescroller/deion_ice_32/ai_deion_ice_32.png
 ai/sidescroller/tong_left/ai_tong_left.png
 ai/sidescroller/tong_right/ai_tong_right.png
 ai/sidescroller/tiles/tong_court/ai_tong_court_64x64.png

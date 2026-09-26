@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 cargo run                     # play the game
 cargo run --features editor   # run the game inside the engine's scene editor
 cargo build                   # compile check
-cargo test                    # run all 74 tests (see "Where the tests live" below)
+cargo test                    # run all 103 tests (see "Where the tests live" below)
 cargo test <test_name>        # run a single test
 cargo clippy                  # must stay clean
 ```
@@ -25,10 +25,11 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 
 - `main.rs` — `Game` impl, `GameConfig` (800×600, 60 FPS, asset/save paths anchored via `game_root!()`), editor wiring
 - `constants.rs` — the sheets block (one `SheetSpec` per sheet), the `FOODS` table (`Food`, its sheet, its burst colour, its depth) and `food_for_row`, and ALL gameplay tuning (sizes derived from the measured art, speeds, brick grid, pickup timing, grid impulses, burst colours, the draw depths). Values tuned in the editor inspector must be copied back here to persist
-- `types.rs` — `BreakoutGame` state, `Sheets`, `GameState`, `GameMode` (SinglePlayer / TwoPlayerCoop), `PaddleSide`, `Facing` and `tong_state`, the clip names (the contract with the sidecars), `Brick`, `PickupKind`
-- `spawning.rs` — the clip machines (tong, ball, candy, one-shot), paddle bodies (kinematic capsule-x colliders) and the tongs drawn on them, walls and their edge strips, loss sensors, the counter, the backdrop, ball (dynamic, CCD, restitution 1.0), one-shot effects, generated fallback brick grids, `rebuild_playfield()`
+- `types.rs` — `BreakoutGame` state, `Sheets`, `GameState`, `GameMode` (SinglePlayer / TwoPlayerCoop), `PaddleSide`, `Facing` and `tong_state`, `Jaw` and each tong's `TongControl`, the clip names (the contract with the sidecars), `Brick`, `PickupKind`
+- `jaw.rs` — Tong's measured jaw (the shared block, byte-identical with `games/pong/src/jaw.rs`) and the quarter turn that makes it a paddle body's collider, field-side arm only
+- `spawning.rs` — the clip machines (the tong's ten states, ball, candy, one-shot), paddle bodies (kinematic, born wearing the closed capsule) and the tongs drawn on them, walls and their edge strips, loss sensors, the counter, the backdrop, ball (dynamic, CCD, restitution 1.0), one-shot effects, generated fallback brick grids, `rebuild_playfield()`
 - `levels.rs` — level rosters (`LEVELS` / `LEVELS_2P`), scene loading, brick-name/tag parsing (see below)
-- `gameplay/` — `mod.rs` (frame orchestration + pause gate + the F1 collider overlay), `paddles.rs` (input + offset-based bounce aim, the tongs' placement and facing), `balls.rs` (serve glue, launch, velocity maintenance, loss, the splash and the scowl), `bricks.rs` (hit resolution + `brick_bounce_velocity`, the foil tearing), `flow.rs` (state transitions, win detection, visibility, the backdrop's theme, the one-shots' drain)
+- `gameplay/` — `mod.rs` (frame orchestration + pause gate + the F1 collider overlay), `paddles.rs` (input, the jaw's asks and machine, the body dressed in the drawn pose, offset-based bounce aim and the chomp, the tongs' placement and facing), `balls.rs` (serve glue, launch, velocity maintenance, loss, the splash and the scowl), `bricks.rs` (hit resolution + `brick_bounce_velocity`, the foil tearing), `flow.rs` (state transitions, win detection, visibility, the backdrop's theme, the one-shots' drain)
 - `power_ups.rs` — what candies DO (multiball / wrecking / insiculous), the collect one-shot, the wrecking sheet swap; tracking mechanics come from the engine's `Pickups<K>` / `EffectTimer`
 - `menu.rs` — menu input handlers + `start_game()` (the match-start reset)
 - `drawing.rs` — all UI (MenuPanel menus, HUD, game-over panel, pause overlay)
@@ -58,13 +59,15 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 
 **Power-ups**: the insiculous trio — Multiball (+1 ball, cap `MAX_EXTRA_BALLS`), Wrecking (10s one-hit-kill, refresh-not-stack, Deion frozen), Insiculous (both). Dropped by `drop_*`-tagged bricks as falling candies — sensors the size of the candy's drawn body — caught with either tong; a catch unwraps where the candy was. Drop-bricks pulse their emissive channel (`pulse_drop_bricks`); armor damage plays the foil frames — the two never fight.
 
-**Where the 74 tests live** (all headless, `cargo test`):
+**Where the 103 tests live** (all headless, `cargo test`):
 - `src/flow_tests.rs` (11) — the match through the engine's `GameHarness` over the synced art: the tong on its unturned paddle and its facing, a fresh serve drawn on the serving paddle, the scowl only for the last ball, the splash from the sheet the ball wore, restart and quit leaving nothing, the wrecking sheet swap, the collect where the candy was (two kinds in one frame included), the backdrop's colour, every level's bricks on the loaded sheets
 - `src/gameplay_tests.rs` (19) — bounce math, `brick_bounce_velocity` corner/gap cases, armored-brick physics integration, candy catch and miss, min-vertical enforcement, serve sides
 - `src/levels_tests.rs` (19) — every shipped scene parses, bricks valid, fits the playfield, every collider is the cell, row N is row N's food, each scene's brick count and tag multiset, armor autoplays foil, one depth per food sheet
-- `src/constants.rs` (8) — every sheet read back against its synced sidecar (grids, clip names, one-shots play once), the specs and the derived numbers, the depth ladder
+- `src/jaw_tests.rs` (18) — the jaw through the harness: the body wears the drawn frame through a whole bite and opening, a press's own frame is no chomp, a chomp's aim and speed and what ends it, a pull-back made mid-bite, a held ball counts one hit, no hit while serving, a beaten ball falls through the trailing arm, the scowl on a shut body, the launch's wind-up (both serve sides, Ridiculous's second ball — from a paddle the mouse just moved, mid-scowl) and the held bite after it, Player 2's chomp, the keys, P2's field, the right button, the multiball ball spawned clear, Deion's circle and splash
+- `src/jaw.rs` (7) — every tong clip's pose table against the synced sidecars, the closed pose is `capsule_x(78, 11)`, each split pose is Tong's field-side arm and pad turned point by point, nothing trails, the facing's lean, the open reach and the mouth under Deion
+- `src/constants.rs` (11) — every sheet read back against its synced sidecar (grids, clip names, one-shots play once), the specs and the derived numbers, Deion at the meatball's size, the channel over the wall, the chomp's spray unlike the grips, the depth ladder
 - `src/spawning.rs` (8) — grid geometry, payouts, co-op playfield swap, no tong or strip outliving a rebuild, the counter
-- `src/achievements.rs` (5), `src/power_ups.rs` (2), `src/gameplay/paddles.rs` (2 — the tong's facing waits out a scowl)
+- `src/achievements.rs` (5), `src/power_ups.rs` (2), `src/gameplay/paddles.rs` (3 — the machine moves only from rest, a facing waits out a scowl, the dead zone and the field side)
 
 `src/test_support.rs` holds the shared fixtures: the sheets read back through the engine's GPU-free load path, and the whole game driven through the engine's `GameHarness`.
 
@@ -75,8 +78,8 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 ## The Food Pyramid (landed 2026-09-25)
 
 Breakout is the **third of the six Phase G Deion re-skins**, after Tong and Chicken Coop. In the
-re-skinned build the paddle is **Tong's tong** lying on the counter, the ball is **Deion** as a 16 px
-water ball, the wall is **six tiers of food** — donut, steak, cheese wheel, baguette, broccoli,
+re-skinned build the paddle is **Tong's tong** lying on the counter, and it bites; the ball is **Deion**
+as a water ball the meatball's size, the wall is **six tiers of food** — donut, steak, cheese wheel, baguette, broccoli,
 watermelon from the top row down, the pyramid from its peak to its base — armored bricks are
 **foil-wrapped**, and the power-ups are **wrapped candies**. The game is played on Tong's kitchen
 counter. In-game it is **THE FOOD PYRAMID** (the title menu and the window title). The crate is still
@@ -99,23 +102,45 @@ save keys.
   |---|---|---|---|
   | six food bricks | 64×32 | **the whole cell** (stated) | collider, sprite, pitch 68 × 36 |
   | tong, closed | 64×96 | 22×78 at (21, 9), centred | the paddle capsule `capsule_x(78, 11)` |
-  | Deion, water and frozen | 16×16 | the body, mohawk excluded, equal on both | the ball's circle and anchor |
+  | Deion, water and frozen | 32×48 | the 30 px body (1, 18)–(31, 48), mohawk excluded, equal on both | the ball's radius-15 circle and anchor |
   | multiball / wrecking / insiculous candy | 48×48 | 39×21 / 39×29 / 39×27 (`idle` union) | each candy's sensor |
   | court tile / court edge | 64×64 / 64×16 | the whole cell | the counter, and the 16 px walls |
 
 - **Every brick's collider is its cell, not its food** — the stated exception to "the drawn thing
   covers the real thing": the smaller foods sit inside their cells with margins (the cheese wheel
   7 px a side, the baguette 7 px above and 6 below), and a ball bounces off that margin. Each food's
-  own box would open gaps a 16 px ball threads. The polish batch may draw the foods closer to their
+  own box would open gaps between the foods. The polish batch may draw the foods closer to their
   cells' edges; no code changes when it does.
-- **The tong is art beside its body.** The paddle is a kinematic capsule that never turns — physics
+- **Deion is the meatball's size** (Jesse's play test, 2026-09-25): at 16 px he was hard to see. His
+  30 px body is wider than the open tong's 28 px mouth, so a bite deflects him and never swallows
+  him; his crest is drawn, not collided, and draws over whatever he touches. The wall starts 18 px
+  lower (`BRICK_TOP_Y` 222), leaving a 46 px channel under the ceiling to match the flanks, so he
+  can ride a flank up and over the top.
+- **The tong is art beside its body.** The paddle is a kinematic body that never turns — physics
   turns a collider with its body, and the F1 overlay draws outlines unrotated — and the tong is a
   sprite-only entity turned a quarter (`TONG_ROTATION`), placed on its paddle after every physics
   step and spawned and drained with it in `rebuild_playfield`. The mouth points the way the paddle
-  last moved (`_up` left, `_down` right); a facing change lands only at rest. The tong rests
-  `closed` — its arms are parallel, so the capsule is exactly the art — and scowls (`scored_on`)
-  when the last live ball is lost, never while one is in flight, because the scowl's arms shudder
-  wider than the capsule.
+  last moved (`_up` left, `_down` right); a jaw or facing change lands only at rest.
+- **The jaw is Tong's, turned a quarter.** Pushing toward the field bites (P1: W, ↑ or the stick up;
+  P2 in co-op: down), pulling away opens, a stick inside the 0.5 dead zone holds; solo merges both
+  slots' axes. Player 1's right mouse button bites on its press and opens on its release. Every
+  device asks only on its edge, so whichever asked last wins, and within a frame the button outranks
+  the axis. The machine is Tong's ten states, one fixed table, `scored_on` always landing `closed`.
+- **The body wears the frame the tong drew** (`jaw.rs`): Tong's measured pose collider turned onto
+  the counter, dressed before the physics step from the animation's clip and clip-relative frame —
+  one frame behind, since the engine advances animations after `update`. **Only the field-side arm
+  and pad collide**, in every split pose: the trailing ones are art, because a ball that has beaten
+  the paddle must not bounce back off the jaw's back. A contact counts only from the field side,
+  and only in play.
+- **The serve holds the jaw shut.** While serving the body wears the closed capsule whatever the
+  tong draws, so the scowl's arms rising into the resting ball are art. The launch opens every jaw
+  through `opening` — never a jump to `open`, whose field-side arm would overlap the rising ball —
+  and no ask is read until it lands; a bite held through the launch lands right after. A ball spawned
+  in play (multiball) appears above the open pad's reach (`EXTRA_BALL_OFFSET_Y`).
+- **The chomp shot.** A contact while the tong is drawing a `closing` frame — the same frame the
+  collider wore, never the machine's state — narrows the aim to ±30° and holds that ball at
+  ×1.15 speed until its next plain paddle hit, its loss, or the match's end. It sprays the pale rim of
+  Deion's water, unlike either grip or a lost ball's splash, and ripples the grid half again as hard.
 - **One depth per sheet, never per entity.** The batcher draws a texture's batch whole, ordered by
   its lowest depth, and the sprite pipeline writes depth for transparent texels too — so a sheet with
   entities under and over another sheet's depth would punch holes in it. The ladder in

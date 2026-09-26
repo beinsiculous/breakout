@@ -18,14 +18,26 @@ pub(crate) fn art_components(sheet: &SpriteSheet, spec: &SheetSpec, depth: f32) 
     (sheet.sprite().with_offset(spec.sprite_offset()).with_depth(depth), sheet.animation())
 }
 
-/// A tong's states: resting closed, and the scowl a lost life plays, in each facing.
-/// The scowl returns to the same facing's rest; a facing change waits for it.
+/// A tong's ten states, Tong's five clips in each facing: resting `open` and `closed`,
+/// the `closing` and `opening` between them, and the scowl a lost life plays.
+///
+/// One fixed table, never rebuilt: a rebuilt machine restarts its clip, and the engine
+/// has no way to retarget a transition. The scowl always lands `closed`, because a serve
+/// or a game over follows it and the serve holds the jaw shut. A clip in flight plays
+/// out before any jaw or facing change: `gameplay::paddles` moves the machine only from
+/// a rest.
 pub(crate) fn tong_machine(facing: Facing) -> ClipStateMachine {
-    let mut states = Vec::with_capacity(4);
+    let mut states = Vec::with_capacity(10);
     for side in [Facing::Up, Facing::Down] {
+        let open = tong_state(TONG_OPEN, side);
+        let closing = tong_state(TONG_CLOSING, side);
         let closed = tong_state(TONG_CLOSED, side);
+        let opening = tong_state(TONG_OPENING, side);
         let scored_on = tong_state(TONG_SCORED_ON, side);
+        states.push((open.clone(), ClipState::staying(open.clone())));
+        states.push((closing.clone(), ClipState::new(closing, OnFinished::Next(closed.clone()))));
         states.push((closed.clone(), ClipState::staying(closed.clone())));
+        states.push((opening.clone(), ClipState::new(opening, OnFinished::Next(open))));
         states.push((scored_on.clone(), ClipState::new(scored_on, OnFinished::Next(closed))));
     }
     ClipStateMachine::new(tong_state(TONG_CLOSED, facing), states)
@@ -74,9 +86,8 @@ pub(crate) fn spawn_effect(
 /// top). It draws nothing — its tong is a separate entity placed on it every frame —
 /// and it never turns: physics would turn the collider with the body.
 ///
-/// The capsule is the closed tong's box lying on its side: its flat face returns balls
-/// predictably, and its rounded caps deflect edge hits outward on top of the
-/// offset-based aim in gameplay.
+/// It is born wearing the closed tong's box lying on its side, the jaw every match
+/// starts with; from then on `gameplay::paddles` dresses it in the pose its tong draws.
 pub(crate) fn spawn_paddle(world: &mut World, name: &str, y: f32) -> EntityId {
     world.spawn()
         .with(Name::new(name))
@@ -89,7 +100,8 @@ pub(crate) fn spawn_paddle(world: &mut World, name: &str, y: f32) -> EntityId {
 }
 
 /// Spawn the tong drawn on a paddle: a quarter-turned sprite with no physics, resting
-/// closed in `facing`.
+/// closed in `facing`. Its jaw moves under `gameplay::paddles`; the collider it draws is
+/// its paddle's.
 pub(crate) fn spawn_tong(
     world: &mut World,
     name: &str,
@@ -235,11 +247,11 @@ impl BreakoutGame {
                 world, &self.sheets.court_edge, name, Vec2::new(x, 0.0), WIN_H, true));
         }
         self.bottom_sensor = Some(spawn_loss_sensor(world, "Loss Sensor bottom", -1.0));
-        self.tong_facing = DEFAULT_TONG_FACING;
+        self.tongs = DEFAULT_TONGS;
         self.paddle = Some(spawn_paddle(world, "Paddle P1", PADDLE_Y));
         self.tong = Some(spawn_tong(
             world, "Tong P1", &TONG_LEFT, &self.sheets.tong_left, TONG_LEFT_DEPTH,
-            Vec2::new(0.0, PADDLE_Y), self.tong_facing[PaddleSide::Bottom.index()]));
+            Vec2::new(0.0, PADDLE_Y), self.tongs[PaddleSide::Bottom.index()].facing));
 
         match mode {
             GameMode::SinglePlayer => {
@@ -253,7 +265,7 @@ impl BreakoutGame {
                 self.paddle_top = Some(spawn_paddle(world, "Paddle P2", PADDLE_TOP_Y));
                 self.tong_top = Some(spawn_tong(
                     world, "Tong P2", &TONG_RIGHT, &self.sheets.tong_right, TONG_RIGHT_DEPTH,
-                    Vec2::new(0.0, PADDLE_TOP_Y), self.tong_facing[PaddleSide::Top.index()]));
+                    Vec2::new(0.0, PADDLE_TOP_Y), self.tongs[PaddleSide::Top.index()].facing));
             }
         }
     }

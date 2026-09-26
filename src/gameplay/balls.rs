@@ -70,7 +70,8 @@ impl BreakoutGame {
 
     /// Fire the served ball toward the field at a slightly random angle
     /// (up from the bottom paddle, down from the top). Ridiculous mode
-    /// launches a second ball mirrored the other way.
+    /// launches a second ball mirrored the other way. The tongs' jaws open through
+    /// `opening` as the ball leaves: every pose it passes through clears the rising ball.
     pub(super) fn launch_balls(&mut self, ctx: &mut GameContext) {
         let Some(ball) = self.ball else { return };
 
@@ -84,8 +85,11 @@ impl BreakoutGame {
         self.physics.set_velocity(ball, dir * speed, 0.0);
 
         if self.chaos_mode.is_ridiculous() {
-            let pos = entity_position(ctx.world, ball)
-                .unwrap_or(Vec2::new(0.0, serving_glue_y(self.serving_side)));
+            // Where the serve is glued this frame, read from the paddle: the served ball's
+            // transform still holds last frame's glue until the next physics step, and a
+            // paddle the mouse just moved would leave the second ball off its centre, on
+            // the arms of a scowl still playing out.
+            let pos = self.serve_position(ctx.world);
             let extra = self.spawn_ball(ctx.world, "Deion (extra)", pos);
             let dir2 = Vec2::new(-angle.sin(), y_sign * angle.cos());
             self.physics.set_velocity(extra, dir2 * speed, 0.0);
@@ -93,6 +97,7 @@ impl BreakoutGame {
             self.apply_ball_visuals(ctx.world);
         }
 
+        self.open_jaws_for_launch();
         self.state = GameState::Playing;
     }
 
@@ -100,17 +105,16 @@ impl BreakoutGame {
         self.ball.into_iter().chain(self.extra_balls.iter().copied()).collect()
     }
 
-    /// Hold every live ball at its target speed and keep it from going
-    /// fully horizontal.
+    /// Hold every live ball at its target speed — a chomped one at the chomp's — and
+    /// keep it from going fully horizontal.
     pub(super) fn maintain_all_ball_velocities(&mut self) {
         if self.state != GameState::Playing { return; }
-        let target = (BALL_SPEED * self.speed_mult).min(BALL_MAX_SPEED);
         for ball in self.all_balls() {
             let Some((vel, _)) = self.physics.get_body_velocity(ball) else { continue };
             let speed = vel.length();
             if speed < 1.0 { continue; }
             let dir = enforce_min_vertical(vel / speed);
-            let new_vel = dir * target;
+            let new_vel = dir * self.ball_target_speed(ball);
             if (new_vel - vel).length() > 1.0 {
                 self.physics.set_velocity(ball, new_vel, 0.0);
             }
@@ -170,6 +174,7 @@ impl BreakoutGame {
             } else {
                 self.extra_balls.retain(|&e| e != ball);
             }
+            self.chomped.retain(|&chomped| chomped != ball);
             self.physics.destroy_entity(ctx.world, ball);
         }
 
@@ -177,8 +182,10 @@ impl BreakoutGame {
 
         // All balls gone — spend a life, and the tong it fell past scowls. Only now:
         // the scowl's arms shudder wider than the paddle's capsule, so it may play
-        // only while nothing is in flight to bounce off air.
+        // only while nothing is in flight to bounce off air. The serve that follows
+        // holds every jaw shut, and the scowl lands closed.
         self.scowl(ctx.world, last_lost_side);
+        self.hold_jaws_shut();
 
         // Wrecking dies with the volley (consistent with the speed_mult reset below).
         self.lives = self.lives.saturating_sub(1);
@@ -232,6 +239,7 @@ impl BreakoutGame {
     }
 
     pub(crate) fn destroy_all_balls(&mut self, world: &mut World) {
+        self.chomped.clear();
         if let Some(ball) = self.ball.take() {
             self.physics.destroy_entity(world, ball);
         }

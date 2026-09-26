@@ -5,8 +5,11 @@ use crate::menu::{achievements_panel, level_select_panel, title_label, title_pan
 use crate::types::*;
 
 /// How far below the window's centre the serve prompt's first line sits, in window
-/// pixels: clear of the food wall in both modes and above the bottom tong.
-const SERVE_PROMPT_BELOW_CENTER: f32 = 150.0;
+/// pixels: clear of the food wall in both modes, and its three lines end above the crest
+/// of a Deion resting on the bottom tong.
+const SERVE_PROMPT_BELOW_CENTER: f32 = 124.0;
+/// The gap between the serve prompt's lines, in window pixels.
+const SERVE_PROMPT_LINE_GAP: f32 = 26.0;
 
 impl BreakoutGame {
     fn menu_style(&self) -> MenuStyle {
@@ -157,13 +160,19 @@ impl BreakoutGame {
                     (_, PaddleSide::Bottom) => "P1 SERVES - SPACE, CLICK, or (A) to launch",
                     (_, PaddleSide::Top) => "P2 SERVES - ENTER or (A) to launch",
                 };
-                // Between the wall and the bottom paddle: the food wall reaches 44 px above
+                // The second line teaches the jaw: toward the field bites, away opens, and
+                // a bite timed as Deion lands is the chomp shot.
+                let bite = match self.mode {
+                    GameMode::SinglePlayer => "W/UP bite - S/DOWN open - RIGHT-CLICK bite - bite as it lands to smash",
+                    GameMode::TwoPlayerCoop => "P1: W bite, S open, RIGHT-CLICK bite - P2: DOWN bite, UP open",
+                };
+                // Between the wall and the bottom paddle: the food wall reaches 26 px above
                 // the centre solo, and co-op's band 106 px below it.
-                ctx.ui.label_centered(server, Vec2::new(cx, cy + SERVE_PROMPT_BELOW_CENTER));
-                ctx.ui.label_centered(
-                    "A/D, Arrows, stick, or mouse to move - ESC to pause",
-                    Vec2::new(cx, cy + SERVE_PROMPT_BELOW_CENTER + 26.0),
-                );
+                let lines = [server, bite, "A/D, Arrows, stick, or mouse to move - ESC to pause"];
+                for (index, line) in lines.into_iter().enumerate() {
+                    let below = SERVE_PROMPT_BELOW_CENTER + index as f32 * SERVE_PROMPT_LINE_GAP;
+                    ctx.ui.label_centered(line, Vec2::new(cx, cy + below));
+                }
             }
             GameState::GameOver { won } => {
                 let msg = if *won { "BOARD CLEARED!" } else { "GAME OVER" };

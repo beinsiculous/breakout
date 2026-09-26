@@ -21,7 +21,7 @@ const fn rgb(hex: u32) -> Vec4 {
 
 /// A food brick's cell. Every brick's collider and sprite are this cell, not the
 /// food's measured box: the smaller foods sit inside it with a margin a ball bounces
-/// off, the stated price of a wall with no gaps a 16 px ball can thread.
+/// off, the stated price of a wall with no gaps a ball can thread.
 pub(crate) const BRICK_CELL: Vec2 = Vec2::new(64.0, 32.0);
 
 const TONG_CELL: Vec2 = Vec2::new(64.0, 96.0);
@@ -29,11 +29,12 @@ const TONG_CELL: Vec2 = Vec2::new(64.0, 96.0);
 /// ways, the same bytes Tong measured.
 const TONG_CLOSED_BOUNDS: (Vec2, Vec2) = (Vec2::new(21.0, 9.0), Vec2::new(43.0, 87.0));
 
-const BALL_CELL: Vec2 = Vec2::new(16.0, 16.0);
-/// Deion's body in every `idle` frame of both ball sheets, the mohawk above it
-/// excluded: the outline never moves, so this box is the collider and the anchor on
-/// either sheet, and swapping sheets moves nothing.
-const BALL_BODY_BOUNDS: (Vec2, Vec2) = (Vec2::new(2.0, 4.0), Vec2::new(14.0, 16.0));
+const BALL_CELL: Vec2 = Vec2::new(32.0, 48.0);
+/// Deion's body in every `idle` frame of both ball sheets, a circle 30 px across with
+/// the mohawk's 18 rows above it excluded: the outline never moves, so this box is the
+/// collider and the anchor on either sheet, and swapping sheets moves nothing. The
+/// crest is drawn, never collided — it draws over whatever Deion touches.
+const BALL_BODY_BOUNDS: (Vec2, Vec2) = (Vec2::new(1.0, 18.0), Vec2::new(31.0, 48.0));
 
 const CANDY_CELL: Vec2 = Vec2::new(48.0, 48.0);
 
@@ -52,13 +53,13 @@ pub(crate) const TONG_RIGHT: SheetSpec = SheetSpec {
 };
 /// Deion as the water ball — the form he plays in every chaos mode.
 pub(crate) const BALL_WATER: SheetSpec = SheetSpec {
-    path: "sprites/ai_deion_16.png",
+    path: "sprites/ai_deion_32.png",
     cell: BALL_CELL,
     bounds: BALL_BODY_BOUNDS,
 };
 /// Deion frozen — the form he takes while the wrecking candy runs.
 pub(crate) const BALL_ICE: SheetSpec = SheetSpec {
-    path: "sprites/ai_deion_ice_16.png",
+    path: "sprites/ai_deion_ice_32.png",
     cell: BALL_CELL,
     bounds: BALL_BODY_BOUNDS,
 };
@@ -223,8 +224,19 @@ pub(crate) const MIN_VERTICAL_FRACTION: f32 = 0.25;
 /// Insane mode: ball speed multiplier gained on every paddle hit.
 pub(crate) const INSANE_SPEED_GAIN: f32 = 1.15;
 
-/// Resting offset of a served ball above the paddle center.
+/// Resting offset of a served ball above the paddle center: on the closed jaw the serve
+/// holds, 2 px clear of it.
 pub(crate) const SERVE_OFFSET_Y: f32 = PADDLE_H / 2.0 + BALL_RADIUS + 2.0;
+/// Where a ball spawned in play appears above the paddle center: clear of the open
+/// jaw's field-side pad, the highest any pose rises, so it touches no tong on its first
+/// step whatever the jaw is drawing.
+pub(crate) const EXTRA_BALL_OFFSET_Y: f32 = crate::jaw::TONG_OPEN_FIELD_REACH + BALL_RADIUS + 4.0;
+/// A chomp's aim: the offset aim's spread, narrowed. The plain aim leaves within ±60°,
+/// a chomp within ±30° — steeper, toward the wall.
+pub(crate) const CHOMP_ANGLE_FACTOR: f32 = 0.5;
+/// A chomped ball's speed over the plain one, Insane's per-hit gain, held until its
+/// next plain paddle hit.
+pub(crate) const CHOMP_SPEED_GAIN: f32 = 1.15;
 /// Full width of the random launch-angle spread, in radians. A served ball
 /// leaves within ±half this off vertical.
 pub(crate) const LAUNCH_ANGLE_SPREAD: f32 = 0.6;
@@ -232,8 +244,10 @@ pub(crate) const LAUNCH_ANGLE_SPREAD: f32 = 0.6;
 pub(crate) const BRICK_COLS: usize = 10;
 pub(crate) const BRICK_ROWS: usize = 6;
 pub(crate) const BRICK_GAP: f32 = 4.0;
-/// Y position of the center of the top brick row.
-pub(crate) const BRICK_TOP_Y: f32 = 240.0;
+/// Y position of the center of the top brick row: the wall's top edge 46 px under the
+/// ceiling's face, the flank channels' width, so a 30 px Deion can ride a flank up and
+/// over the wall.
+pub(crate) const BRICK_TOP_Y: f32 = 222.0;
 /// Co-op: the top row of the middle band, placed so the band is centred on the
 /// window and each paddle faces the same reaction room.
 pub(crate) const BRICK_TOP_Y_2P: f32 = (BRICK_ROWS as f32 - 1.0) * (BRICK_CELL.y + BRICK_GAP) / 2.0;
@@ -256,13 +270,18 @@ pub(crate) const COMBO_TARGET: u32 = 5;
 /// lost (safety net for CCD misses / NaN positions).
 pub(crate) const BALL_LOST_BOUNDS_PAD: f32 = 60.0;
 /// How far inside the window's edge a lost ball's splash is drawn: the loss sensor
-/// fires with the ball's centre outside the window, where a splash would not show.
-pub(crate) const SPLASH_EDGE_INSET: f32 = 8.0;
+/// fires with the ball's centre outside the window, where a splash would not show. The
+/// splash's body sits on the edge; at co-op's open top edge its crest may clip off the
+/// window.
+pub(crate) const SPLASH_EDGE_INSET: f32 = BALL_RADIUS + 2.0;
 
 // Radial impulses rippled into the backdrop grid, one strength and radius per event
 // that disturbs it.
 pub(crate) const GRID_IMPULSE_PADDLE_HIT_STRENGTH: f32 = 200.0;
 pub(crate) const GRID_IMPULSE_PADDLE_HIT_RADIUS: f32 = 70.0;
+/// A chomp ripples the grid half again as hard and as wide as a plain paddle hit.
+pub(crate) const GRID_IMPULSE_CHOMP_STRENGTH: f32 = GRID_IMPULSE_PADDLE_HIT_STRENGTH * 1.5;
+pub(crate) const GRID_IMPULSE_CHOMP_RADIUS: f32 = GRID_IMPULSE_PADDLE_HIT_RADIUS * 1.5;
 pub(crate) const GRID_IMPULSE_BRICK_DESTROY_STRENGTH: f32 = 260.0;
 pub(crate) const GRID_IMPULSE_BRICK_DESTROY_RADIUS: f32 = 90.0;
 pub(crate) const GRID_IMPULSE_BALL_LOST_STRENGTH: f32 = 700.0;
@@ -286,6 +305,9 @@ pub(crate) const P2_BURST_COLOR: Vec4 = rgb(0x29D1EA);
 pub(crate) const FOIL_BURST_COLOR: Vec4 = rgb(0xCFC9DC);
 /// A lost ball's burst under the splash: Deion's body core.
 pub(crate) const SPLASH_BURST_COLOR: Vec4 = rgb(0x29D1EA);
+/// A chomp's spray: the pale rim of Deion's water, unlike either tong's grip or a lost
+/// ball's splash, so a chomp reads on both tongs.
+pub(crate) const CHOMP_BURST_COLOR: Vec4 = rgb(0x8DF3F8);
 /// The wrecking countdown label: the ice ramp's pale highlight, the frozen ball's.
 pub(crate) const WRECKING_LABEL_COLOR: Vec4 = rgb(0x8DF3F8);
 
@@ -436,6 +458,41 @@ mod tests {
     }
 
     #[test]
+    fn deion_is_the_meatballs_size_on_both_sheets() {
+        // A 30 px body in a 32x48 cell, the crest's 18 rows above it: collider radius
+        // 15, and the anchor puts the body's centre, not the cell's, on the position.
+        for spec in [&BALL_WATER, &BALL_ICE] {
+            assert_eq!(spec.cell, Vec2::new(32.0, 48.0), "{}", spec.path);
+            assert_eq!(spec.bounds, (Vec2::new(1.0, 18.0), Vec2::new(31.0, 48.0)), "{}", spec.path);
+        }
+        assert_eq!(BALL_RADIUS, 15.0);
+        // The body's centre is 9 px below the cell's centre, so the sprite is drawn
+        // 9 px higher than the position.
+        assert_eq!(BALL_WATER.sprite_offset(), Vec2::new(0.0, 9.0));
+        assert_eq!(SERVE_OFFSET_Y, 28.0);
+        assert_eq!(EXTRA_BALL_OFFSET_Y, 42.0);
+        assert_eq!(SPLASH_EDGE_INSET, 17.0);
+    }
+
+    #[test]
+    fn a_chomps_spray_differs_from_both_grips_and_the_splash() {
+        for other in [P1_BURST_COLOR, P2_BURST_COLOR, SPLASH_BURST_COLOR] {
+            assert_ne!(CHOMP_BURST_COLOR, other);
+        }
+    }
+
+    #[test]
+    fn the_wall_leaves_a_deion_wide_channel_under_the_ceiling() {
+        let ceiling_face = WIN_H / 2.0 - WALL_THICKNESS;
+        let wall_top = BRICK_TOP_Y + BRICK_CELL.y / 2.0;
+        assert_eq!(ceiling_face - wall_top, 46.0, "the flank channels' width");
+        assert!(ceiling_face - wall_top > BALL_SIZE, "Deion rides over the wall");
+        let flank = PLAYFIELD_HALF_W - (crate::spawning::brick_x(BRICK_COLS - 1) + BRICK_CELL.x / 2.0);
+        assert_eq!(flank, 46.0);
+        const { assert!(BRICK_GAP < BALL_SIZE, "and threads no gap between bricks") };
+    }
+
+    #[test]
     fn the_derived_playfield_numbers() {
         assert_eq!((PADDLE_W, PADDLE_H), (78.0, 22.0));
         assert_eq!(WALL_THICKNESS, 16.0);
@@ -481,6 +538,6 @@ mod tests {
             assert_eq!(spec.food.spec().sheet.path, spec.sheet.path);
         }
         assert_eq!(Food::from_sheet_path("elsewhere/ai_pyramid_donut_64x32.png"), Some(Food::Donut));
-        assert_eq!(Food::from_sheet_path("sprites/ai_deion_16.png"), None);
+        assert_eq!(Food::from_sheet_path("sprites/ai_deion_32.png"), None);
     }
 }

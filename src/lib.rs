@@ -10,6 +10,7 @@
 mod achievements;
 mod chaos_theme;
 mod constants;
+mod title_art;
 mod drawing;
 mod effects;
 #[cfg(test)]
@@ -59,6 +60,8 @@ pub fn game_config(asset_base: &str) -> GameConfig {
         // The art is 1x with nearest filtering, so snapping every sprite's origin to a
         // whole device pixel is what keeps it crisp at this window size.
         .with_pixel_snap(true)
+        .with_startup_splashes(STARTUP_CARDS)
+        .with_window_icon(WINDOW_ICON)
         .with_asset_base_path(asset_base)
 }
 
@@ -86,6 +89,7 @@ impl Game for BreakoutGame {
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
         self.sheets.white = tex.id;
+        self.title_art = title_art::TitleArt::load(ctx.assets);
 
         // Every sheet's path, cell and measured anchor is in `constants.rs`; the PNG and
         // its sidecar are the synced copies under `assets/sprites/`.

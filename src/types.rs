@@ -311,6 +311,9 @@ pub struct BreakoutGame {
     pub(crate) debug_colliders: bool,
     /// Engine pause menu (Esc/Start toggles during a match).
     pub(crate) pause: PauseMenu,
+    /// The title screen's art, loaded in `init`; `None` when it did not load, and the
+    /// title keeps its plain centred menu.
+    pub(crate) title_art: Option<crate::title_art::TitleArt>,
 }
 
 impl Default for BreakoutGame {
@@ -349,6 +352,7 @@ impl Default for BreakoutGame {
             combo: 0,
             debug_colliders: false,
             pause: PauseMenu::new(),
+            title_art: None,
         }
     }
 }

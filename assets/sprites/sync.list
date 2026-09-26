@@ -10,7 +10,7 @@
 # check_no_ai_assets.sh gate must still find them until Jesse's cleanup pass
 # turns them into hand-cleaned masters outside deion_assets/ai/.
 #
-# deion_assets f8c9975c54c30fcbcda9e08251292c2141dc76df
+# deion_assets bd4ff3f0b742b155e154a4f71f4837bd51164909
 ai/sidescroller/props/pyramid_watermelon/ai_pyramid_watermelon_64x32.png
 ai/sidescroller/props/pyramid_broccoli/ai_pyramid_broccoli_64x32.png
 ai/sidescroller/props/pyramid_baguette/ai_pyramid_baguette_64x32.png
@@ -26,3 +26,7 @@ ai/sidescroller/tong_left/ai_tong_left.png
 ai/sidescroller/tong_right/ai_tong_right.png
 ai/sidescroller/tiles/tong_court/ai_tong_court_64x64.png
 ai/sidescroller/props/tong_court_edge/ai_tong_court_edge_64x16.png
+ai/branding/be_insiculous/ai_be_insiculous_320x192.png
+ai/branding/insiculous_2d_maxwell/ai_insiculous_2d_maxwell_splash_320x192.png
+ai/branding/insiculous_2d_maxwell/ai_insiculous_2d_maxwell_icon_64x64.png
+ai/title_screens/food_pyramid/ai_food_pyramid_title_480x288.png

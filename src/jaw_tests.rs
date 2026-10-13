@@ -587,7 +587,7 @@ fn ridiculouss_second_ball_leaves_from_the_paddle_the_mouse_just_moved_even_mid_
     let mut harness = harness(GameMode::SinglePlayer, PINATA);
     harness.context(|game, ctx| {
         let tong = game.tong.expect("tong");
-        crate::gameplay::set_clip_state(ctx.world, tong, &tong_state(TONG_SCORED_ON, Facing::Up));
+        set_clip_state(ctx.world, tong, &tong_state(TONG_SCORED_ON, Facing::Up));
         game.combo = 7;
     });
     harness.step(FRAME, &[]);

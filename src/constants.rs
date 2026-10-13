@@ -3,17 +3,6 @@ use engine_core::prelude::*;
 pub(crate) const WIN_W: f32 = 800.0;
 pub(crate) const WIN_H: f32 = 600.0;
 
-/// An opaque colour from its `0xRRGGBB` hex — the form DEION_STYLE.md § 4 records
-/// every ramp in, so a constant here reads the same as the style guide's row.
-const fn rgb(hex: u32) -> Vec4 {
-    Vec4::new(
-        ((hex >> 16) & 0xFF) as f32 / 255.0,
-        ((hex >> 8) & 0xFF) as f32 / 255.0,
-        (hex & 0xFF) as f32 / 255.0,
-        1.0,
-    )
-}
-
 // --- the sheets ---------------------------------------------------------------------
 // Every bound is measured from the synced PNG: the opaque box of the named reference
 // frame inside its own cell, Y down, the bottom-right corner one past the last opaque
@@ -339,7 +328,7 @@ pub(crate) const COURT_TILE_PX: f32 = COURT_TILE_CELL.x;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::spawning::{ball_machine, candy_machine, one_shot_machine, tong_machine};
+    use crate::spawning::{ball_machine, candy_machine, tong_machine};
     use crate::test_support::sidecar;
     use crate::types::*;
 
@@ -347,8 +336,8 @@ mod tests {
     /// declared cell must cut the synced PNG into.
     fn every_sheet() -> Vec<(&'static SheetSpec, Vec<ClipStateMachine>, (u32, u32))> {
         let tongs = || vec![tong_machine(Facing::Up), tong_machine(Facing::Down)];
-        let ball = || vec![ball_machine(), one_shot_machine(BALL_HURT)];
-        let candy = || vec![candy_machine(), one_shot_machine(CANDY_COLLECT)];
+        let ball = || vec![ball_machine(), ClipStateMachine::one_shot(BALL_HURT)];
+        let candy = || vec![candy_machine(), ClipStateMachine::one_shot(CANDY_COLLECT)];
         let mut sheets = vec![
             (&TONG_LEFT, tongs(), (4, 7)),
             (&TONG_RIGHT, tongs(), (4, 7)),

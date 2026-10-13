@@ -20,7 +20,7 @@ use crate::constants::*;
 use crate::effects;
 use crate::jaw::{drawn_pose, tong_body_collider, JawPose, JAW_AXIS_DEAD_ZONE};
 use crate::types::*;
-use super::{entity_position, entity_x, ripple_grid, set_clip_state};
+use super::{entity_position, entity_x, ripple_grid};
 
 /// Direction a ball leaves the bottom paddle, from where it struck.
 ///

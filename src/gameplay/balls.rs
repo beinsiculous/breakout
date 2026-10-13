@@ -6,7 +6,7 @@ use crate::constants::*;
 use crate::effects;
 use crate::spawning::spawn_effect;
 use crate::types::*;
-use super::{entity_position, entity_x, ripple_grid, set_clip_state};
+use super::{entity_position, entity_x, ripple_grid};
 
 /// Re-aim `dir` if it is too horizontal, preserving its left/right and
 /// up/down senses. Keeps the ball from shuttling between the side walls.

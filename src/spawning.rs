@@ -46,18 +46,13 @@ pub(crate) fn tong_machine(facing: Facing) -> ClipStateMachine {
 /// The ball's one state: Deion sloshing. `hurt` belongs to the splash that replaces a
 /// lost ball, not to the ball, whose body is destroyed the frame it is lost.
 pub(crate) fn ball_machine() -> ClipStateMachine {
-    ClipStateMachine::new(BALL_IDLE, vec![(BALL_IDLE.to_string(), ClipState::staying(BALL_IDLE))])
+    ClipStateMachine::single(BALL_IDLE)
 }
 
 /// A falling candy's one state. `collect` belongs to the one-shot that replaces it:
 /// the engine's `Pickups::collect` destroys the candy and its body in the same call.
 pub(crate) fn candy_machine() -> ClipStateMachine {
-    ClipStateMachine::new(CANDY_IDLE, vec![(CANDY_IDLE.to_string(), ClipState::staying(CANDY_IDLE))])
-}
-
-/// A detached effect's machine: it plays `clip` once and despawns.
-pub(crate) fn one_shot_machine(clip: &str) -> ClipStateMachine {
-    ClipStateMachine::new(clip, vec![(clip.to_string(), ClipState::new(clip, OnFinished::Despawn))])
+    ClipStateMachine::single(CANDY_IDLE)
 }
 
 /// Spawn a detached one-shot at `position`: a lost ball's splash, a caught candy's
@@ -78,7 +73,7 @@ pub(crate) fn spawn_effect(
         .with(Transform2D::from_parts(position, 0.0, spec.scale()))
         .with(sprite)
         .with(animation)
-        .with(one_shot_machine(clip))
+        .with(ClipStateMachine::one_shot(clip))
         .id()
 }
 
@@ -455,7 +450,7 @@ mod tests {
     #[test]
     fn the_counter_covers_the_window() {
         let mut world = World::new();
-        let court = spawn_court(&mut world, &placeholder_sheet());
+        let court = spawn_court(&mut world, &SpriteSheet::placeholder());
         let map = world.get::<Tilemap>(court).expect("the court is a tilemap");
         assert_eq!((map.width, map.height), (13, 10));
         assert!(map.width as f32 * COURT_TILE_PX >= WIN_W && map.height as f32 * COURT_TILE_PX >= WIN_H);

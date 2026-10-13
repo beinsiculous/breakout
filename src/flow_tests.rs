@@ -234,7 +234,7 @@ fn a_restart_and_a_quit_rest_both_tongs_closed() {
                 let facing = Facing::split(ctx.world.get::<ClipStateMachine>(tong).expect("m").state())
                     .expect("a tong state")
                     .1;
-                crate::gameplay::set_clip_state(ctx.world, tong, &tong_state(TONG_SCORED_ON, facing));
+                set_clip_state(ctx.world, tong, &tong_state(TONG_SCORED_ON, facing));
             }
         });
     };

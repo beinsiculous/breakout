@@ -212,32 +212,20 @@ impl Sheets {
     }
 }
 
-/// A sheet with no texture, one cell and no clips. `Sheets::default` holds these until
-/// `init()` loads the real ones: the engine builds the game with `Default` and calls
-/// `init` on the first frame, before any entity that could draw exists.
-pub(crate) fn placeholder_sheet() -> SpriteSheet {
-    SpriteSheet {
-        texture: TextureHandle { id: 0 },
-        grid: SheetGrid::new(1, 1),
-        clips: Vec::new(),
-        path: String::new(),
-    }
-}
-
 impl Default for Sheets {
     fn default() -> Self {
         Self {
             white: 0,
-            foods: std::array::from_fn(|_| placeholder_sheet()),
-            ball_water: placeholder_sheet(),
-            ball_ice: placeholder_sheet(),
-            candy_multiball: placeholder_sheet(),
-            candy_wrecking: placeholder_sheet(),
-            candy_insiculous: placeholder_sheet(),
-            tong_left: placeholder_sheet(),
-            tong_right: placeholder_sheet(),
-            court: placeholder_sheet(),
-            court_edge: placeholder_sheet(),
+            foods: std::array::from_fn(|_| SpriteSheet::placeholder()),
+            ball_water: SpriteSheet::placeholder(),
+            ball_ice: SpriteSheet::placeholder(),
+            candy_multiball: SpriteSheet::placeholder(),
+            candy_wrecking: SpriteSheet::placeholder(),
+            candy_insiculous: SpriteSheet::placeholder(),
+            tong_left: SpriteSheet::placeholder(),
+            tong_right: SpriteSheet::placeholder(),
+            court: SpriteSheet::placeholder(),
+            court_edge: SpriteSheet::placeholder(),
         }
     }
 }

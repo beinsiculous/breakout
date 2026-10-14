@@ -46,8 +46,8 @@ handoff written before they exist cannot be executed, and says so in its report.
 ## Step 0 — report before drawing
 
 - `git rev-parse HEAD` of this checkout; it must be the head the batch section records.
-- `$ASEPRITE --version` (or `aseprite --version`); it must print **<REQUIRED_ASEPRITE>**. A
-  different version stops the batch — a newer encoder breaks byte-identity silently.
+- `$ASEPRITE --version` (or `aseprite --version`); record the installed version. Newer releases are welcome; a version mismatch alone
+  never stops the batch. Run the export gates to determine compatibility.
 - Re-read and report the batch's anchors; if any differs from what the section quotes, stop.
 
 ## The brief

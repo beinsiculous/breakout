@@ -10,7 +10,8 @@
 mod achievements;
 mod chaos_theme;
 mod constants;
-mod title_art;
+#[cfg(test)]
+mod title_screen_tests;
 mod drawing;
 mod effects;
 #[cfg(test)]
@@ -89,7 +90,7 @@ impl Game for BreakoutGame {
 
         let tex = ctx.assets.create_solid_color(1, 1, [255, 255, 255, 255]).unwrap();
         self.sheets.white = tex.id;
-        self.title_art = title_art::TitleArt::load(ctx.assets);
+        self.title_art = TitleArt::load(ctx.assets, TITLE_ART);
 
         // Every sheet's path, cell and measured anchor is in `constants.rs`; the PNG and
         // its sidecar are the synced copies under `assets/sprites/`.

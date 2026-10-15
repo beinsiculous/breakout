@@ -547,13 +547,15 @@ pub(crate) const WINDOW_ICON: &str = "sprites/ai_insiculous_2d_maxwell_icon_64x6
 
 /// The Food Pyramid's title composition, 480×288, synced from deion_assets.
 pub(crate) const TITLE_ART: &str = "sprites/ai_food_pyramid_title_480x288.png";
-/// The art's last row with content in it: the menu panel starts just under it,
-/// over the art's blank lower margin (measured from the synced PNG).
-pub(crate) const TITLE_ART_CONTENT_BOTTOM: f32 = 234.0;
-/// The title menu panel's width.
-pub(crate) const TITLE_PANEL_WIDTH: f32 = 380.0;
-/// Nothing is drawn under the title panel.
-pub(crate) const TITLE_LINES_BELOW_PANEL: f32 = 0.0;
+/// The title menu as the layout needs it: the panel's width, this build's rows, the
+/// fit decided on the native build's rows (the web drops Achievements), and what is
+/// drawn under the panel. Nothing is drawn under the title panel.
+pub(crate) const TITLE_MENU: TitleMenu = TitleMenu {
+    panel_width: 380.0,
+    rows: crate::menu::TITLE_ITEMS.len(),
+    fit_rows: crate::menu::TITLE_ITEMS.len() + cfg!(target_arch = "wasm32") as usize,
+    lines_below_panel: 0.0,
+};
 
 #[cfg(test)]
 mod startup_card_tests {

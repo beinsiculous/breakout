@@ -1,7 +1,6 @@
 use engine_core::prelude::*;
 use crate::achievements::DISPLAY_SECTIONS;
 use crate::chaos_theme::theme_for;
-use crate::title_art::{draw_title_art, title_layout};
 use crate::menu::{achievements_panel, level_select_panel, title_label, TITLE_ITEMS};
 use crate::types::*;
 
@@ -28,7 +27,7 @@ impl BreakoutGame {
 
     fn draw_title(&self, ctx: &mut GameContext, selection: u8) {
         let style = self.menu_style();
-        let layout = title_layout("THE FOOD PYRAMID", ctx.window_size, self.title_art.as_ref());
+        let layout = title_layout("THE FOOD PYRAMID", ctx.window_size, self.title_art.as_ref(), &crate::constants::TITLE_MENU);
         draw_title_art(ctx.ui, ctx.window_size, &layout, self.title_art.as_ref());
         let panel = layout.panel;
         let mut y = panel.begin(ctx.ui, &style);

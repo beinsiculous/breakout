@@ -44,7 +44,7 @@ pub(crate) fn title_label(item: TitleItem) -> &'static str {
 // Panel layouts shared by the input half (mouse hit-testing here) and the
 // drawing half (`drawing.rs`) — the geometry must match or clicks land
 // beside the drawn rows. Titles only affect the label, never the layout. The
-// title screen's own layout is `title_art::title_layout`, shared the same way.
+// title screen's own layout is the engine's `title_layout`, shared the same way.
 /// Row count follows the mode's roster, so the hit-tested rows can never
 /// drift from the drawn ones when a level is added.
 pub(crate) fn level_select_panel(title: &str, window_size: Vec2, mode: GameMode) -> MenuPanel {
@@ -57,7 +57,7 @@ pub(crate) fn achievements_panel(title: &str, window_size: Vec2) -> MenuPanel {
 impl BreakoutGame {
     pub(crate) fn update_title_input(&mut self, ctx: &mut GameContext, selection: u8) {
         let input = MenuInput::read(ctx.input);
-        let mouse = crate::title_art::title_layout("", ctx.window_size, self.title_art.as_ref())
+        let mouse = title_layout("", ctx.window_size, self.title_art.as_ref(), &crate::constants::TITLE_MENU)
             .panel
             .mouse_select(ctx.input);
         let selection = mouse.hovered.unwrap_or(selection);

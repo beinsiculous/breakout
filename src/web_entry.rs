@@ -7,8 +7,8 @@
 //! The site's profile page reads the same keys.
 //!
 //! With `--features editor` the same library builds a SECOND bundle, served at
-//! `/playground/breakout/`, that runs this game inside the engine's scene editor.
-//! That bundle writes none of the `beinsiculous.games.breakout.*` keys above — an
+//! `/playground/food-pyramid/`, that runs this game inside the engine's scene editor.
+//! That bundle writes none of the `beinsiculous.games.food-pyramid.*` keys above — an
 //! editor session must not record achievements, scores or bindings the site's
 //! boards read — and keeps its camera and panel layout in a slot of its own.
 
@@ -32,7 +32,7 @@ use std::path::PathBuf;
 /// 3. the site's `src/content/games/<slug>.md` `wasm:` path,
 /// 4. the deployed dir `insiculous_web/public/games/<slug>/v<N>/`.
 #[cfg(not(feature = "editor"))]
-const ASSET_BASE: &str = "/games/breakout/v4/assets";
+const ASSET_BASE: &str = "/games/food-pyramid/v5/assets";
 
 /// Where the editor bundle serves its assets from; also its VFS key base.
 ///
@@ -78,9 +78,14 @@ pub fn start() {
 #[cfg(not(feature = "editor"))]
 fn run_configured_game() -> Result<(), engine_core::EngineError> {
     let config = crate::game_config(ASSET_BASE)
-        .with_achievement_save_path("beinsiculous.games.breakout.achievements")
-        .with_input_settings_path("beinsiculous.games.breakout.input")
-        .with_score_save_path("beinsiculous.games.breakout.scores");
+        .with_achievement_save_path("beinsiculous.games.food-pyramid.achievements")
+        .with_input_settings_path("beinsiculous.games.food-pyramid.input")
+        .with_score_save_path("beinsiculous.games.food-pyramid.scores")
+        // The keys this game saved under before its rename: read at boot and folded
+        // in, never written, so a player keeps their progress across the rename.
+        .with_former_achievement_save_path("beinsiculous.games.breakout.achievements")
+        .with_former_input_settings_path("beinsiculous.games.breakout.input")
+        .with_former_score_save_path("beinsiculous.games.breakout.scores");
     run_game(crate::BreakoutGame::default(), config)
 }
 

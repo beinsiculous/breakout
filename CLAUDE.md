@@ -17,7 +17,7 @@ The game depends on the `insiculous_2d` engine by relative path (`../../insiculo
 
 ## Architecture
 
-This is a single-crate game (`insiculous_breakout`) built on the in-house `insiculous_2d` ECS engine. `BreakoutGame` (in `src/types.rs`) implements the engine's `Game` trait in `src/main.rs` — `init()` loads the sheets and builds the persistent scaffolding (the counter, the backdrop grid, the solo playfield), `update()` runs once per frame. With `--features editor` the identical game runs inside the engine's scene editor via `editor_integration::run_game_with_editor`, and at `/playground/breakout/` in the browser (the same feature, built by the engine's `build_wasm.sh --kind editor` and served from the site); no game code changes between the modes.
+This is a single-crate game (`insiculous_breakout`) built on the in-house `insiculous_2d` ECS engine. `BreakoutGame` (in `src/types.rs`) implements the engine's `Game` trait in `src/main.rs` — `init()` loads the sheets and builds the persistent scaffolding (the counter, the backdrop grid, the solo playfield), `update()` runs once per frame. With `--features editor` the identical game runs inside the engine's scene editor via `editor_integration::run_game_with_editor`, and at `/playground/food-pyramid/` in the browser (the same feature, built by the engine's `build_wasm.sh --kind editor` and served from the site); no game code changes between the modes.
 
 **State machine drives everything.** `GameState` (types.rs) is matched at the top of `update()` in main.rs: the menu states (`TitleScreen`, `LevelSelect`, `Achievements`) dispatch to handlers in `menu.rs`; everything else (`Serving`, `Playing`, `GameOver`) falls through to `update_gameplay()` in `gameplay/mod.rs`, which orchestrates the per-frame steps implemented across `gameplay/{paddles,balls,bricks,flow}.rs`. Flow is Title → Level Select (picking a level also picks its chaos mode) → Serving ↔ Playing → GameOver. `update_entity_visibility()` (flow.rs) hides all gameplay sprites while a menu state is active — entities persist, only `Sprite.visible` flips; the counter and the grid over it stay up, as Tong's court does.
 
@@ -83,9 +83,10 @@ as a water ball the meatball's size, the wall is **six tiers of food** — donut
 watermelon from the top row down, the pyramid from its peak to its base — armored bricks are
 **foil-wrapped**, and the power-ups are **wrapped candies**. The game is played on Tong's kitchen
 counter. In-game it is **THE FOOD PYRAMID** (the title menu and the window title). The crate is still
-`insiculous_breakout`, `BreakoutGame` is still the game type, the site still lists it as *Insiculous
-Breakout* and its slug is still `breakout` — those are frozen with the ten achievement ids and the
-save keys.
+`insiculous_breakout`, `BreakoutGame` is still the game type, and the ten achievement ids are
+unchanged. The site names it **The Food Pyramid** at `/games/food-pyramid/`, the former
+`/games/breakout/` redirecting there, and its web save keys are `beinsiculous.games.food-pyramid.*`,
+with the former `beinsiculous.games.breakout.*` keys read at boot.
 
 - **Art enters only through the sync.** `assets/sprites/sync.list` pins the `deion_assets` commit
   and lists the fifteen sources — the six bricks, the three candies, the two balls, both tongs, the

@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 cargo run                     # play the game
 cargo run --features editor   # run the game inside the engine's scene editor
 cargo build                   # compile check
-cargo test                    # run all 103 tests (see "Where the tests live" below)
+cargo test                    # run all 107 tests (see "Where the tests live" below)
 cargo test <test_name>        # run a single test
 cargo clippy                  # must stay clean
 ```
@@ -59,14 +59,15 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 
 **Power-ups**: the insiculous trio — Multiball (+1 ball, cap `MAX_EXTRA_BALLS`), Wrecking (10s one-hit-kill, refresh-not-stack, Deion frozen), Insiculous (both). Dropped by `drop_*`-tagged bricks as falling candies — sensors the size of the candy's drawn body — caught with either tong; a catch unwraps where the candy was. Drop-bricks pulse their emissive channel (`pulse_drop_bricks`); armor damage plays the foil frames — the two never fight.
 
-**Where the 103 tests live** (all headless, `cargo test`):
-- `src/flow_tests.rs` (11) — the match through the engine's `GameHarness` over the synced art: the tong on its unturned paddle and its facing, a fresh serve drawn on the serving paddle, the scowl only for the last ball, the splash from the sheet the ball wore, restart and quit leaving nothing, the wrecking sheet swap, the collect where the candy was (two kinds in one frame included), the backdrop's colour, every level's bricks on the loaded sheets
+**Where the 107 tests live** (all headless, `cargo test`):
+- `src/flow_tests.rs` (12) — the match through the engine's `GameHarness` over the synced art: the tong on its unturned paddle and its facing, a fresh serve drawn on the serving paddle, the scowl only for the last ball, the splash from the sheet the ball wore, restart and quit leaving nothing, the wrecking sheet swap, the collect where the candy was (two kinds in one frame included), the backdrop's colour, every level's bricks on the loaded sheets, drawn at their cell over a collider of the same size (the prefab's scale, which no override restates)
 - `src/gameplay_tests.rs` (19) — bounce math, `brick_bounce_velocity` corner/gap cases, armored-brick physics integration, candy catch and miss, min-vertical enforcement, serve sides
 - `src/levels_tests.rs` (19) — every shipped scene parses, bricks valid, fits the playfield, every collider is the cell, row N is row N's food, each scene's brick count and tag multiset, armor autoplays foil, one depth per food sheet
 - `src/jaw_tests.rs` (18) — the jaw through the harness: the body wears the drawn frame through a whole bite and opening, a press's own frame is no chomp, a chomp's aim and speed and what ends it, a pull-back made mid-bite, a held ball counts one hit, no hit while serving, a beaten ball falls through the trailing arm, the scowl on a shut body, the launch's wind-up (both serve sides, Ridiculous's second ball — from a paddle the mouse just moved, mid-scowl) and the held bite after it, Player 2's chomp, the keys, P2's field, the right button, the multiball ball spawned clear, Deion's circle and splash
 - `src/jaw.rs` (7) — every tong clip's pose table against the synced sidecars, the closed pose is `capsule_x(78, 11)`, each split pose is Tong's field-side arm and pad turned point by point, nothing trails, the facing's lean, the open reach and the mouth under Deion
-- `src/constants.rs` (11) — every sheet read back against its synced sidecar (grids, clip names, one-shots play once), the specs and the derived numbers, Deion at the meatball's size, the channel over the wall, the chomp's spray unlike the grips, the depth ladder
+- `src/constants.rs` (12) — every sheet read back against its synced sidecar (grids, clip names, one-shots play once), the specs and the derived numbers, Deion at the meatball's size, the channel over the wall, the chomp's spray unlike the grips, the depth ladder
 - `src/spawning.rs` (8) — grid geometry, payouts, co-op playfield swap, no tong or strip outliving a rebuild, the counter
+- `src/title_screen_tests.rs` (2) — the synced title art and the menu fit the window with the menu under the art's content; the art draws on the title screen only, and again on returning to it
 - `src/achievements.rs` (5), `src/power_ups.rs` (2), `src/gameplay/paddles.rs` (3 — the machine moves only from rest, a facing waits out a scowl, the dead zone and the field side)
 
 `src/test_support.rs` holds the shared fixtures: the sheets read back through the engine's GPU-free load path, and the whole game driven through the engine's `GameHarness`.

@@ -282,6 +282,29 @@ fn every_shipped_level_spawns_its_bricks_on_the_loaded_food_sheets() {
 }
 
 #[test]
+fn every_shipped_levels_bricks_load_drawn_at_their_cell_and_collide_on_it() {
+    // A brick's override names only its position, so its scale is the prefab's: lost,
+    // the sprite would draw at scale 1 (80 x 80) over a 64 x 32 collider.
+    let cell_scale = Vec2::new(BRICK_CELL.x / RENDER_UNIT, BRICK_CELL.y / RENDER_UNIT);
+    for mode in [GameMode::SinglePlayer, GameMode::TwoPlayerCoop] {
+        for level in 0..crate::levels::roster(mode).len() {
+            let harness = harness(mode, level);
+            let world = harness.world();
+            for brick in &harness.game().bricks {
+                let scale = world.get::<Transform2D>(brick.entity).expect("transform").scale;
+                assert_eq!(scale, cell_scale, "{mode:?} level {level}: the prefab's (0.8, 0.4)");
+                let shape = world.get::<Collider>(brick.entity).map(|collider| collider.shape.clone());
+                assert_eq!(
+                    shape,
+                    Some(ColliderShape::Box { half_extents: scale * RENDER_UNIT / 2.0 }),
+                    "{mode:?} level {level}: the collider is what the sprite draws"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn a_fresh_serve_is_drawn_on_the_serving_paddle_the_frame_it_spawns() {
     // After a loss past the top in co-op, the top tong serves: the fresh ball's first
     // rendered frame must already sit on it, not at the bottom paddle it used to spawn on.

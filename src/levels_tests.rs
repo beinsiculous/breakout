@@ -24,24 +24,11 @@ fn load_scene() -> SceneData {
     SceneLoader::load_from_file(manifest_scene_path()).expect("level1.scene.ron should parse")
 }
 
-/// Effective components of an entity, merged as the engine merges them: the prefab's,
-/// then the overrides, then the inline components an editor save writes.
-fn merged_components(scene: &SceneData, entity: &EntityData) -> Vec<ComponentData> {
-    let mut result: Vec<ComponentData> = entity
-        .prefab
-        .as_ref()
-        .and_then(|p| scene.prefabs.get(p))
-        .map(|p| p.components.clone())
-        .unwrap_or_default();
-    for over in entity.overrides.iter().chain(&entity.components) {
-        let kind = std::mem::discriminant(over);
-        if let Some(pos) = result.iter().position(|c| std::mem::discriminant(c) == kind) {
-            result[pos] = over.clone();
-        } else {
-            result.push(over.clone());
-        }
-    }
-    result
+/// Effective components of an entity, through the engine's own merge: the prefab's,
+/// each override field by field, then the inline components an editor save writes.
+fn effective_components(scene: &SceneData, entity: &EntityData) -> Vec<ComponentData> {
+    SceneLoader::effective_components(scene, entity)
+        .unwrap_or_else(|error| panic!("{:?} should merge: {error}", entity.name))
 }
 
 /// Load a roster level via a CARGO_MANIFEST_DIR-anchored path (tests can't
@@ -96,7 +83,7 @@ fn every_roster_level_fits_the_playfield() {
             let scene = load_roster_level(def);
             for entity in &scene.entities {
                 let name = entity.name.as_deref().unwrap_or("<unnamed>");
-                let (pos, scale) = merged_components(&scene, entity)
+                let (pos, scale) = effective_components(&scene, entity)
                     .into_iter()
                     .find_map(|c| match c {
                         ComponentData::Transform2D { position, scale, .. } => {
@@ -159,7 +146,7 @@ fn shipped_level_positions_match_generated_grid() {
             .and_then(|s| s.parse().ok())
             .expect("brick name has a column");
 
-        let transform = merged_components(&scene, entity)
+        let transform = effective_components(&scene, entity)
             .into_iter()
             .find_map(|c| match c {
                 ComponentData::Transform2D { position, scale, .. } => Some((position, scale)),
@@ -186,7 +173,7 @@ fn every_brick_collider_is_its_cell() {
             let scene = load_roster_level(def);
             for entity in &scene.entities {
                 let name = entity.name.as_deref().expect("all level entities are named");
-                let half_extents = merged_components(&scene, entity)
+                let half_extents = effective_components(&scene, entity)
                     .into_iter()
                     .find_map(|c| match c {
                         ComponentData::Collider {
@@ -217,7 +204,7 @@ fn plain_bricks_do_not_glow_and_the_grid_fits_between_the_walls() {
         for def in roster(mode) {
             let scene = load_roster_level(def);
             for entity in &scene.entities {
-                let emissive = merged_components(&scene, entity)
+                let emissive = effective_components(&scene, entity)
                     .iter()
                     .find_map(|c| match c {
                         ComponentData::Sprite { emissive, .. } => Some(*emissive),
@@ -245,7 +232,7 @@ fn scene_bricks(scene: &SceneData) -> Vec<SceneBrick> {
         .entities
         .iter()
         .map(|entity| {
-            let components = merged_components(scene, entity);
+            let components = effective_components(scene, entity);
             let (sheet, autoplay) = components
                 .iter()
                 .find_map(|c| match c {
@@ -474,7 +461,7 @@ fn every_roster_level_tag_is_meaningful() {
             let scene = load_roster_level(def);
             for entity in &scene.entities {
                 let name = entity.name.as_deref().unwrap_or("<unnamed>");
-                for c in merged_components(&scene, entity) {
+                for c in effective_components(&scene, entity) {
                     if let ComponentData::EntityTag { tag } = c {
                         assert_ne!(
                             parse_brick_tag(&tag),
@@ -505,7 +492,7 @@ fn prize_levels_have_drop_bricks() {
             let drops = scene
                 .entities
                 .iter()
-                .flat_map(|e| merged_components(&scene, e))
+                .flat_map(|e| effective_components(&scene, e))
                 .filter_map(|c| match c {
                     ComponentData::EntityTag { tag } => parse_brick_tag(&tag).drop,
                     _ => None,

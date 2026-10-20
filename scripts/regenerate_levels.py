@@ -301,7 +301,6 @@ def generate(scene_path, scene):
             raise ValueError(f"{scene_path.name}: {name} is below the pyramid's base row")
 
     used = sorted({(row, is_armored(tag)) for _, row, _, tag in bricks})
-    scale = f"({number(BRICK_CELL_WIDTH / RENDER_UNIT)}, {number(BRICK_CELL_HEIGHT / RENDER_UNIT)})"
 
     lines = [HEADER.format(title_comment=f"{scene['name']} — The Food Pyramid's bricks.")]
     lines.append("SceneData(\n")
@@ -313,7 +312,7 @@ def generate(scene_path, scene):
     lines.append("    entities: [\n")
     for name, row, col, tag in bricks:
         x, y = brick_position(row, col, top_y)
-        overrides = f"Transform2D(position: ({number(x)}, {number(y)}), scale: {scale})"
+        overrides = f"Transform2D(position: ({number(x)}, {number(y)}))"
         if tag is not None:
             overrides += f', EntityTag(tag: "{tag}")'
         lines.append(

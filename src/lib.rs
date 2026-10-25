@@ -26,6 +26,9 @@ mod levels;
 #[cfg(test)]
 mod levels_tests;
 mod menu;
+mod music;
+#[cfg(test)]
+mod music_tests;
 mod power_ups;
 mod spawning;
 #[cfg(test)]
@@ -116,6 +119,9 @@ impl Game for BreakoutGame {
         // editor sees a populated scene before play.
         self.rebuild_playfield(ctx.world, GameMode::SinglePlayer);
 
+        self.music.start(ctx);
+        log::info!("food pyramid: init complete");
+
         // Brick layouts are authored in per-level scenes (editor-editable);
         // start_game() loads the selected level each match, falling back to
         // the generated grid if the file is missing.
@@ -123,6 +129,7 @@ impl Game for BreakoutGame {
 
     fn update(&mut self, ctx: &mut GameContext) {
         self.frame_count = self.frame_count.wrapping_add(1);
+        self.music.update(ctx);
 
         match self.state.clone() {
             GameState::TitleScreen { selection } => self.update_title_input(ctx, selection),

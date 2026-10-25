@@ -9,8 +9,9 @@ use std::path::{Path, PathBuf};
 
 use engine_core::assets::sprite_sheet::{prepare_sheet, PreparedSheet};
 use engine_core::prelude::*;
-use engine_core::test_support::GameHarness;
+use engine_core::test_support::{GameHarness, InputEvent};
 
+use crate::constants::{BALL_SPEED, PADDLE_Y};
 use crate::types::*;
 
 pub(crate) const FRAME: f32 = 1.0 / 60.0;
@@ -76,4 +77,35 @@ pub(crate) fn named(world: &World, name: &str) -> Vec<EntityId> {
         .into_iter()
         .filter(|&entity| world.get::<Name>(entity).is_some_and(|found| found.0 == name))
         .collect()
+}
+
+/// Press and release the serve: the ball leaves the serving paddle.
+pub(crate) fn launch(harness: &mut GameHarness<BreakoutGame>) {
+    harness.step(FRAME, &[InputEvent::KeyPressed(KeyCode::Space)]);
+    harness.step(FRAME, &[InputEvent::KeyReleased(KeyCode::Space)]);
+    assert_eq!(harness.game().state, GameState::Playing, "the serve launched");
+}
+
+pub(crate) fn paddle_of(harness: &GameHarness<BreakoutGame>, side: PaddleSide) -> EntityId {
+    match side {
+        PaddleSide::Bottom => harness.game().paddle.expect("the bottom paddle"),
+        PaddleSide::Top => harness.game().paddle_top.expect("co-op's top paddle"),
+    }
+}
+
+/// Put `ball` at `offset` from `side`'s paddle, moving at `velocity`.
+pub(crate) fn place_ball(harness: &mut GameHarness<BreakoutGame>, ball: EntityId, side: PaddleSide, offset: Vec2, velocity: Vec2) {
+    let paddle = position_of(harness.world(), paddle_of(harness, side));
+    harness.context(|game, _| {
+        game.physics.reset_body(ball, paddle + offset);
+        game.physics.set_velocity(ball, velocity, 0.0);
+    });
+}
+
+/// Send `ball` downward from just under the bottom paddle, into the loss sensor.
+pub(crate) fn send_past_the_bottom(harness: &mut GameHarness<BreakoutGame>, ball: EntityId) {
+    harness.context(|game, _| {
+        game.physics.reset_body(ball, Vec2::new(0.0, PADDLE_Y - 40.0));
+        game.physics.set_velocity(ball, Vec2::new(0.0, -BALL_SPEED), 0.0);
+    });
 }

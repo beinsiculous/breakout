@@ -168,6 +168,7 @@ impl BreakoutGame {
             self.spawn_splash(ctx.world, ball, splash_at);
             ctx.particles.spawn_burst(splash_at, &effects::ball_lost_burst(&theme, self.sheets.white));
             ripple_grid(ctx.world, splash_at, GRID_IMPULSE_BALL_LOST_STRENGTH, GRID_IMPULSE_BALL_LOST_RADIUS);
+            self.music.loss(ctx);
 
             if Some(ball) == self.ball {
                 self.ball = self.extra_balls.pop();

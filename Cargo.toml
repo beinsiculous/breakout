@@ -22,6 +22,8 @@ glam = { version = "0.30.10", features = ["serde"] }
 # `engine_core::test_support::GameHarness`; the feature reaches test builds only.
 [dev-dependencies]
 engine_core = { path = "../../insiculous_2d/crates/engine_core", features = ["test-support"] }
+# The music tests read the committed song's sidecar and MIDI back.
+music_midi = { path = "../../insiculous_2d/crates/music_midi" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # The `=` pin must match the wasm-bindgen CLI (asserted by build_wasm.sh)

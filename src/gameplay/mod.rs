@@ -12,7 +12,7 @@ mod paddles;
 #[cfg(test)]
 pub(crate) use balls::{enforce_min_vertical, serving_glue_y};
 #[cfg(test)]
-pub(crate) use bricks::{brick_bounce_velocity, brick_hit_outcome, BrickHitOutcome};
+pub(crate) use bricks::{brick_bounce_velocity, brick_hit_outcome, bricks_hit_this_frame, BrickHitOutcome};
 #[cfg(test)]
 pub(crate) use flow::serve_side_after_loss;
 #[cfg(test)]
@@ -57,9 +57,13 @@ impl BreakoutGame {
                 PauseAction::ExitGame => { ctx.request_exit(); return; }
                 // Skip the rest of the frame so the resuming keypress can't
                 // leak into gameplay (Space must not also launch the ball).
-                PauseAction::Resumed => return,
+                PauseAction::Resumed => {
+                    self.music.follow_pause(ctx, false);
+                    return;
+                }
                 PauseAction::Idle => {}
             }
+            self.music.follow_pause(ctx, self.pause.is_active());
             if self.pause.is_active() {
                 // The engine holds the backdrop grid still with the rest of the world
                 // (it steps on the time-scaled delta), so only the collider overlay is
@@ -67,6 +71,12 @@ impl BreakoutGame {
                 self.emit_collider_overlay(ctx);
                 return;
             }
+        }
+
+        if matches!(self.state, GameState::Serving | GameState::Playing) {
+            let paddles = [self.paddle, self.paddle_top]
+                .map(|paddle| paddle.and_then(|paddle| entity_position(ctx.world, paddle)));
+            self.music.pulse(ctx, paddles);
         }
 
         self.update_paddles(ctx);

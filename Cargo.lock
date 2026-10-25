@@ -157,6 +157,7 @@ version = "0.1.0"
 dependencies = [
  "common",
  "log",
+ "music_midi",
  "rodio",
  "thiserror 2.0.18",
 ]
@@ -697,6 +698,7 @@ dependencies = [
  "indexmap",
  "input",
  "log",
+ "music_midi",
  "physics",
  "renderer",
  "serde",
@@ -710,6 +712,7 @@ dependencies = [
 name = "editor_integration"
 version = "0.1.0"
 dependencies = [
+ "audio",
  "common",
  "ecs",
  "editor",
@@ -1180,6 +1183,7 @@ dependencies = [
  "engine_core",
  "glam",
  "log",
+ "music_midi",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
@@ -1453,6 +1457,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "midly"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "207d755f4cb882d20c4da58d707ca9130a0c9bc5061f657a4f299b8e36362b7a"
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1476,6 +1486,18 @@ checksum = "bb85c154ba489f01b25c0d36ae69a87e4a1c73a72631fc6c0eb6dde34a73e44b"
 dependencies = [
  "num-traits",
  "pxfm",
+]
+
+[[package]]
+name = "music_midi"
+version = "0.1.0"
+dependencies = [
+ "common",
+ "midly",
+ "ron",
+ "rustysynth",
+ "serde",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -2449,6 +2471,12 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
+
+[[package]]
+name = "rustysynth"
+version = "1.3.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa4bcfea87b1b7f7a4c3eecc18934a88943b0cd3c16b69965aed94ffa4868954"
 
 [[package]]
 name = "safe_arch"

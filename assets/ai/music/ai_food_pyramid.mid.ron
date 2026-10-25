@@ -1,0 +1,108 @@
+(
+    version: 1,
+    soundfont: "soundfonts/food_pyramid.sf2",
+    looping: true,
+    parts: [
+        (
+            name: "march",
+            track: Name("melody"),
+            mode: Loop,
+            quantize: Off,
+        ),
+        (
+            name: "bass",
+            track: Name("bass"),
+            mode: AtSongPosition,
+            quantize: Off,
+        ),
+        (
+            name: "loss",
+            track: Name("dirge"),
+            mode: Loop,
+            quantize: Off,
+        ),
+        (
+            name: "clear",
+            track: Name("stinger"),
+            mode: Loop,
+            quantize: Off,
+        ),
+        (
+            name: "jam",
+            track: Name("jam"),
+            mode: Loop,
+            quantize: Off,
+        ),
+    ],
+    instruments: [
+        (
+            name: "trumpet",
+            source: SoundFont(
+                path: "soundfonts/food_pyramid.sf2",
+                bank: 0,
+                preset: 56,
+            ),
+        ),
+        (
+            name: "trombone",
+            source: SoundFont(
+                path: "soundfonts/food_pyramid.sf2",
+                bank: 0,
+                preset: 57,
+            ),
+        ),
+        (
+            name: "tuba",
+            source: SoundFont(
+                path: "soundfonts/food_pyramid.sf2",
+                bank: 0,
+                preset: 58,
+            ),
+        ),
+        (
+            name: "timpani",
+            source: SoundFont(
+                path: "soundfonts/food_pyramid.sf2",
+                bank: 0,
+                preset: 47,
+            ),
+        ),
+    ],
+    bindings: [
+        (
+            action: "brick",
+            part: "march",
+            instrument: "trumpet",
+        ),
+        (
+            action: "armor",
+            part: "march",
+            instrument: "trombone",
+        ),
+        (
+            action: "paddle",
+            part: "bass",
+            instrument: "tuba",
+        ),
+        (
+            action: "loss",
+            part: "loss",
+            instrument: "timpani",
+        ),
+        (
+            action: "clear",
+            part: "clear",
+            instrument: "trumpet",
+        ),
+        (
+            action: "menu",
+            part: "jam",
+            instrument: "trumpet",
+        ),
+    ],
+    provenance: Some((
+        author: "Giuseppe Verdi, 1871; sequenced by the Opus executor for Be Insiculous, 2026",
+        license: "CC0-1.0",
+    )),
+    midi_fingerprint: Some(6690789370318093330),
+)

@@ -59,6 +59,7 @@ impl BreakoutGame {
         self.unlock_win_achievements(ctx);
         let _ = ctx.scores.submit(score_mode(self.mode), self.score as u64);
         self.state = GameState::GameOver { won: true };
+        self.music.clear(ctx);
     }
 
     pub(crate) fn reset_to_title(&mut self, world: &mut World) {

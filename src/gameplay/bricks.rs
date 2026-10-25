@@ -49,32 +49,37 @@ pub(crate) fn brick_hit_outcome(hits_left: u32, wrecking_active: bool) -> BrickH
     }
 }
 
+/// The bricks this frame's started contacts touched, by their index in `bricks`, each
+/// once however many balls touched it, in **descending** index: the order the hits are
+/// resolved in, so a removal never shifts a lower index, and the order the `brick` and
+/// `armor` triggers go out in.
+pub(crate) fn bricks_hit_this_frame(collisions: &[CollisionData], balls: &[EntityId], bricks: &[Brick]) -> Vec<usize> {
+    let mut hit: Vec<usize> = Vec::new();
+    for collision in collisions {
+        if !collision.event.started { continue; }
+        for (index, brick) in bricks.iter().enumerate() {
+            if balls.iter().any(|&ball| collision.event.involves(ball, brick.entity)) {
+                hit.push(index);
+            }
+        }
+    }
+    hit.sort_unstable_by(|left, right| right.cmp(left));
+    hit.dedup();
+    hit
+}
+
 impl BreakoutGame {
     /// Resolve brick hits: armored bricks take damage (rapier reflects the
     /// ball naturally — the brick survives, so its contact impulse lands);
     /// destroyed bricks score, grow the combo, and may drop a pickup.
     pub(super) fn check_brick_hits(&mut self, ctx: &mut GameContext, collisions: &[CollisionData]) {
         let all_balls = self.all_balls();
-
-        let mut hit: Vec<usize> = Vec::new();
-        for collision in collisions {
-            if !collision.event.started { continue; }
-            for (i, brick) in self.bricks.iter().enumerate() {
-                if all_balls.iter().any(|&b| collision.event.involves(b, brick.entity)) {
-                    hit.push(i);
-                }
-            }
-        }
-        // A brick can appear once per ball that touched it this frame —
-        // dedup so it only takes one hit. Ascending order for reverse removal.
-        hit.sort_unstable();
-        hit.dedup();
+        let hit = bricks_hit_this_frame(collisions, &all_balls, &self.bricks);
         if hit.is_empty() { return; }
 
         let wrecking_active = self.wrecking_active();
         let theme = theme_for(self.chaos_mode);
-        // Descending order: removals at index i never shift lower indices.
-        for &i in hit.iter().rev() {
+        for i in hit {
             match brick_hit_outcome(self.bricks[i].hits_left, wrecking_active) {
                 BrickHitOutcome::Damaged { hits_left } => {
                     self.bricks[i].hits_left = hits_left;
@@ -91,6 +96,7 @@ impl BreakoutGame {
                             &effects::armor_hit_burst(FOIL_BURST_COLOR, &theme, self.sheets.white),
                         );
                     }
+                    self.music.armor(ctx, entity);
                 }
                 BrickHitOutcome::Destroyed => {
                     let brick = self.bricks.remove(i);
@@ -137,6 +143,7 @@ impl BreakoutGame {
             let burst_color = brick.food.spec().burst_color;
             ctx.particles.spawn_burst(pos, &effects::brick_burst(burst_color, theme, self.sheets.white));
             ripple_grid(ctx.world, pos, GRID_IMPULSE_BRICK_DESTROY_STRENGTH, GRID_IMPULSE_BRICK_DESTROY_RADIUS);
+            self.music.brick(ctx);
 
             if let Some(kind) = brick.drop {
                 self.spawn_pickup(ctx.world, kind, pos);

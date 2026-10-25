@@ -23,23 +23,10 @@ fn release(key: KeyCode) -> InputEvent {
     InputEvent::KeyReleased(key)
 }
 
-fn launch(harness: &mut GameHarness<BreakoutGame>) {
-    harness.step(FRAME, &[press(KeyCode::Space)]);
-    harness.step(FRAME, &[release(KeyCode::Space)]);
-    assert_eq!(harness.game().state, GameState::Playing, "the serve launched");
-}
-
 fn tong_of(harness: &GameHarness<BreakoutGame>, side: PaddleSide) -> EntityId {
     match side {
         PaddleSide::Bottom => harness.game().tong.expect("the bottom tong"),
         PaddleSide::Top => harness.game().tong_top.expect("co-op's top tong"),
-    }
-}
-
-fn paddle_of(harness: &GameHarness<BreakoutGame>, side: PaddleSide) -> EntityId {
-    match side {
-        PaddleSide::Bottom => harness.game().paddle.expect("the bottom paddle"),
-        PaddleSide::Top => harness.game().paddle_top.expect("co-op's top paddle"),
     }
 }
 
@@ -91,15 +78,6 @@ fn open_and_empty(mode: GameMode) -> GameHarness<BreakoutGame> {
     harness.context(|game, ctx| game.destroy_all_balls(ctx.world));
     step_until_resting(&mut harness, PaddleSide::Bottom, TONG_OPEN, &[]);
     harness
-}
-
-/// Put `ball` at `offset` from `side`'s paddle, moving at `velocity`.
-fn place_ball(harness: &mut GameHarness<BreakoutGame>, ball: EntityId, side: PaddleSide, offset: Vec2, velocity: Vec2) {
-    let paddle = position_of(harness.world(), paddle_of(harness, side));
-    harness.context(|game, _| {
-        game.physics.reset_body(ball, paddle + offset);
-        game.physics.set_velocity(ball, velocity, 0.0);
-    });
 }
 
 fn a_fresh_ball(harness: &mut GameHarness<BreakoutGame>) -> EntityId {

@@ -32,7 +32,7 @@ use std::path::PathBuf;
 /// 3. the site's `src/content/games/<slug>.md` `wasm:` path,
 /// 4. the deployed dir `insiculous_web/public/games/<slug>/v<N>/`.
 #[cfg(not(feature = "editor"))]
-const ASSET_BASE: &str = "/games/food-pyramid/v5/assets";
+const ASSET_BASE: &str = "/games/food-pyramid/v6/assets";
 
 /// Where the editor bundle serves its assets from; also its VFS key base.
 ///
@@ -43,7 +43,7 @@ const ASSET_BASE: &str = "/games/food-pyramid/v5/assets";
 /// 3. the site's `src/content/games/<slug>.md` `editor:` path,
 /// 4. the deployed dir `insiculous_web/public/playground/<slug>/v<N>/`.
 #[cfg(feature = "editor")]
-const EDITOR_ASSET_BASE: &str = "/playground/breakout/v4/assets";
+const EDITOR_ASSET_BASE: &str = "/playground/breakout/v5/assets";
 
 /// The editor's preferences slot for this game.
 ///

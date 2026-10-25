@@ -15,20 +15,6 @@ use crate::types::*;
 /// body's round trip through the physics world costs a few ulps.
 const POSITION_TOLERANCE: f32 = 0.001;
 
-fn launch(harness: &mut engine_core::test_support::GameHarness<BreakoutGame>) {
-    harness.step(FRAME, &[InputEvent::KeyPressed(KeyCode::Space)]);
-    harness.step(FRAME, &[InputEvent::KeyReleased(KeyCode::Space)]);
-    assert_eq!(harness.game().state, GameState::Playing, "the serve launched");
-}
-
-/// Send `ball` downward from just under the bottom paddle, into the loss sensor.
-fn send_past_the_bottom(harness: &mut engine_core::test_support::GameHarness<BreakoutGame>, ball: EntityId) {
-    harness.context(|game, _| {
-        game.physics.reset_body(ball, Vec2::new(0.0, PADDLE_Y - 40.0));
-        game.physics.set_velocity(ball, Vec2::new(0.0, -BALL_SPEED), 0.0);
-    });
-}
-
 /// Step until the life count drops, and say how many frames that took.
 fn step_until_a_life_is_lost(harness: &mut engine_core::test_support::GameHarness<BreakoutGame>) -> usize {
     let lives = harness.game().lives;

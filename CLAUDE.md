@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 cargo run                     # play the game
 cargo run --features editor   # run the game inside the engine's scene editor
 cargo build                   # compile check
-cargo test                    # run all 107 tests (see "Where the tests live" below)
+cargo test                    # run all 122 tests (see "Where the tests live" below)
 cargo test <test_name>        # run a single test
 cargo clippy                  # must stay clean
 ```
@@ -31,7 +31,8 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 - `levels.rs` — level rosters (`LEVELS` / `LEVELS_2P`), scene loading, brick-name/tag parsing (see below)
 - `gameplay/` — `mod.rs` (frame orchestration + pause gate + the F1 collider overlay), `paddles.rs` (input, the jaw's asks and machine, the body dressed in the drawn pose, offset-based bounce aim and the chomp, the tongs' placement and facing), `balls.rs` (serve glue, launch, velocity maintenance, loss, the splash and the scowl), `bricks.rs` (hit resolution + `brick_bounce_velocity`, the foil tearing), `flow.rs` (state transitions, win detection, visibility, the backdrop's theme, the one-shots' drain)
 - `power_ups.rs` — what candies DO (multiball / wrecking / insiculous), the collect one-shot, the wrecking sheet swap; tracking mechanics come from the engine's `Pickups<K>` / `EffectTimer`
-- `menu.rs` — menu input handlers + `start_game()` (the match-start reset)
+- `menu.rs` — menu input handlers + `start_game()` (the match-start reset, which also re-aims the song)
+- `music.rs` — the Triumphal March: the six bindings, the moments that trigger them, the game's counts and the beat pulse, over the engine's `GameMusic` (§ Music below)
 - `drawing.rs` — all UI (MenuPanel menus, HUD, game-over panel, pause overlay)
 - `effects.rs` — particle burst configs; `chaos_theme.rs` — the Normal-mode palette over the engine's `ChaosTheme` (the grid colour, and the menu panels' background and border)
 - `scripts/regenerate_levels.py` — the one-off generator that wrote the eight scenes at the food-brick pitch; `--check` proves they still equal a fresh generation
@@ -59,7 +60,7 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 
 **Power-ups**: the insiculous trio — Multiball (+1 ball, cap `MAX_EXTRA_BALLS`), Wrecking (10s one-hit-kill, refresh-not-stack, Deion frozen), Insiculous (both). Dropped by `drop_*`-tagged bricks as falling candies — sensors the size of the candy's drawn body — caught with either tong; a catch unwraps where the candy was. Drop-bricks pulse their emissive channel (`pulse_drop_bricks`); armor damage plays the foil frames — the two never fight.
 
-**Where the 107 tests live** (all headless, `cargo test`):
+**Where the 122 tests live** (all headless, `cargo test`):
 - `src/flow_tests.rs` (12) — the match through the engine's `GameHarness` over the synced art: the tong on its unturned paddle and its facing, a fresh serve drawn on the serving paddle, the scowl only for the last ball, the splash from the sheet the ball wore, restart and quit leaving nothing, the wrecking sheet swap, the collect where the candy was (two kinds in one frame included), the backdrop's colour, every level's bricks on the loaded sheets, drawn at their cell over a collider of the same size (the prefab's scale, which no override restates)
 - `src/gameplay_tests.rs` (19) — bounce math, `brick_bounce_velocity` corner/gap cases, armored-brick physics integration, candy catch and miss, min-vertical enforcement, serve sides
 - `src/levels_tests.rs` (19) — every shipped scene parses, bricks valid, fits the playfield, every collider is the cell, row N is row N's food, each scene's brick count and tag multiset, armor autoplays foil, one depth per food sheet
@@ -67,10 +68,11 @@ This is a single-crate game (`insiculous_breakout`) built on the in-house `insic
 - `src/jaw.rs` (7) — every tong clip's pose table against the synced sidecars, the closed pose is `capsule_x(78, 11)`, each split pose is Tong's field-side arm and pad turned point by point, nothing trails, the facing's lean, the open reach and the mouth under Deion
 - `src/constants.rs` (12) — every sheet read back against its synced sidecar (grids, clip names, one-shots play once), the specs and the derived numbers, Deion at the meatball's size, the channel over the wall, the chomp's spray unlike the grips, the depth ladder
 - `src/spawning.rs` (8) — grid geometry, payouts, co-op playfield swap, no tong or strip outliving a rebuild, the counter
+- `src/music_tests.rs` (15) — the song through the harness on its virtual clock: the sidecar's six bindings and modes, the bass line tiling the loop, the song after `init`, each moment's trigger and source (a destroyed brick on the game's, a foil brick's and a paddle's on their own, ended with them), the frame's order (paddle before brick, bricks in descending index, the last brick before the clear), the stinger's notes held and released, the pause jam, the pulse, a match start's identity rule, a missing bank
 - `src/title_screen_tests.rs` (2) — the synced title art and the menu fit the window with the menu under the art's content; the art draws on the title screen only, and again on returning to it
 - `src/achievements.rs` (5), `src/power_ups.rs` (2), `src/gameplay/paddles.rs` (3 — the machine moves only from rest, a facing waits out a scowl, the dead zone and the field side)
 
-`src/test_support.rs` holds the shared fixtures: the sheets read back through the engine's GPU-free load path, and the whole game driven through the engine's `GameHarness`.
+`src/test_support.rs` holds the shared fixtures: the sheets read back through the engine's GPU-free load path, the whole game driven through the engine's `GameHarness`, and the ball moves the jaw, flow and music tests share (`launch`, `place_ball`, `send_past_the_bottom`).
 
 **Paths:** assets and saves resolve through `engine_core::game_root!()` (exe directory if it contains `assets/`, else `CARGO_MANIFEST_DIR`), so `cargo run` works from any cwd. Achievements persist to `saves/breakout_achievements.json`, input bindings to `saves/input_settings.json`.
 
@@ -169,6 +171,72 @@ with the former `beinsiculous.games.breakout.*` keys read at boot.
   prefix, with the `sync.list` line moved to it.
 - Sheet clip names (`.sheet.ron` sidecars) are the stable API between art and code; `types.rs`
   spells each one once.
+
+## Music (the Triumphal March, 2026-10)
+
+The Food Pyramid plays the *Triumphal March* from Verdi's *Aida* through the engine's conductor
+(`training.md` § Conductor Pattern in the engine). The game's part is `src/music.rs` — its
+constants, its moments, its counts and its pulse — standing on the engine's `GameMusic`
+(`engine_core::game_music`), which carries the request, the match start's identity rule, the
+jam's latch, the beat and the telemetry. Its tests are `src/music_tests.rs`.
+
+- **The song** is `assets/ai/music/ai_food_pyramid.mid` and its sidecar: sixteen bars of 4/4 in
+  A♭ major at 112 BPM, looping. An agent sequenced it through the composer's command API (`song
+  new`, `song edit …`, `song save ai/music/ai_food_pyramid.mid`), so it sits under `ai/music` with
+  the `ai_` prefix until a person's pass promotes it; the composer's Save wrote the sidecar and the
+  stanza in `assets/ai/music/LICENSE`. Never hand-edit the sidecar — open the song in the composer
+  (`cargo run --features editor`, File → Open Song) and save it again.
+- **The background** — the trombone's chords and the timpani's march — plays by itself from `init`
+  on, through the menus, under the pause menu and under the game-over panel.
+- **Six bindings, two source kinds**, every part `quantize: Off` (a quantized trigger in the loop's
+  last beat would be parked on the seam and dropped):
+
+  | binding | moment | part (mode) | instrument | source |
+  |---|---|---|---|---|
+  | `brick` | a brick destroyed (`destroy_brick_entity`) | `march` (Loop) | trumpet | the game's — the brick is gone in that call and its note rings on |
+  | `armor` | a foil brick survives a hit | `march` (Loop) | trombone | the brick's own — a second ball that kills it mid-note releases it |
+  | `paddle` | a tong returns a ball, a chomp included | `bass` (AtSongPosition) | tuba | the paddle's own |
+  | `loss` | each lost ball | `loss` (Loop, one stroke) | timpani | the game's |
+  | `clear` | the board cleared (`check_win_condition`) | `clear` (Loop, one chord) | trumpet | the game's |
+  | `menu` | a move in the pause menu | `jam` (Loop) | trumpet | the menu's |
+
+  A foil brick and a plain one walk **one** tune on two instruments. The paddle plays the bass note
+  written for that moment of the march, always in the chord; the bass line has no rest from tick 0
+  to the loop's end, which a test holds. `Sequence` is not used: it consumes its units by song time
+  too, and a board clear falls anywhere in the loop.
+- **The sources' lifecycle**: `rebuild_playfield` destroys and respawns the paddles at every match
+  start, so the old paddle's source ends in that frame's tail and the new one activates on its first
+  hit.
+- **The order within a frame** is the order `update_gameplay` runs its passes: paddles, then bricks
+  (in descending index, the order the hits are resolved in — `bricks_hit_this_frame`), then lost
+  balls, then the clear. `Music.triggered`, built only in tests, records the frame's calls.
+- **A match start decides by the song in the slot** (`GameMusic::restart`, from `start_game`, which
+  every match start takes): none → requested again; the game's own → back to its top; another song
+  (the composer's audition in the editor) → left alone.
+- **The pulse**: on each bar line the paddle-hit ripple under each live tong, on any other beat a
+  quarter of it (`BEAT_PULSE_FRACTION`; zero is bars only), while Serving or Playing and never under
+  the pause menu.
+- **The pause hint** reads "ESC resumes - SPACE/ENTER or click confirms - move to jam"
+  (`PAUSE_HINT`), and only the pause menu jams: a level select that played a note on every move
+  would be a sound effect, not a jam.
+- **No recorded fallback.** A song that cannot play is logged once at `error` ("food pyramid: the
+  song could not play: …"), every trigger is refused and counted, and the game is as silent as it
+  was before it had music; each match start asks again.
+- **Telemetry**: every five seconds a `conductor=on …` line with the game's `bricks`, `armor_hits`,
+  `paddle_hits`, `losses`, `clears`, `jam_units`, `pulsed` and `refused`, at `info` when asked —
+  `?telemetry=1` on the web page, `FOOD_PYRAMID_TELEMETRY=1` natively. `init` ends with `food
+  pyramid: init complete`, the line the boot measurement stops on.
+- **The bank** is `assets/soundfonts/food_pyramid.sf2`, FluidR3 GM's trumpet (0:56), trombone
+  (0:57), tuba (0:58) and timpani (0:47), 2.17 MiB, cut by `scripts/prepare_soundfont.sh` — a
+  wrapper over the engine's `scripts/prepare_game_soundfont.sh` with `--bank <path>` for a
+  FluidR3_GM.sf2 got any other way; the source's and the output's sha256s are in the `LICENSE`
+  beside it. Budget: **the bank under 4 MiB** (the engine's script refuses to write one over it),
+  the song under 256 KiB. On the web every asset, the bank included, is fetched before the first
+  frame.
+- The browser bundles moved to **v6** (game) and **v5** (editor) with the music
+  (`src/web_entry.rs` names the four places each version lives).
+- **The finale**: Dr. Maxwell's cameo on a clear is `breakout#3`'s; when it lands it plays on the
+  `clear` binding.
 
 ## Work tracking
 

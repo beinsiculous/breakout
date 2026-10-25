@@ -126,7 +126,9 @@ impl BreakoutGame {
     }
 
     /// Reset score/lives, rebuild the playfield for the selected mode,
-    /// rebuild the brick grid, and put a fresh ball on the serving paddle.
+    /// rebuild the brick grid, put a fresh ball on the serving paddle, and take the
+    /// song back to its top (or request it, if the slot is empty). Every match start
+    /// comes through here: the level select, the pause menu's Restart, the game over.
     pub(crate) fn start_game(&mut self, ctx: &mut GameContext) {
         self.score = 0;
         self.lives = STARTING_LIVES;
@@ -157,6 +159,7 @@ impl BreakoutGame {
             self.physics.set_kinematic_target(paddle, Vec2::new(0.0, PADDLE_TOP_Y), 0.0);
         }
         self.state = GameState::Serving;
+        self.music.restart(ctx);
     }
 
     /// Spawn the selected level's brick layout from its scene, falling back

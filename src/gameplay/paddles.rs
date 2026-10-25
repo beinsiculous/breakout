@@ -357,6 +357,7 @@ impl BreakoutGame {
                 };
                 ctx.particles.spawn_burst(pos, &effects::paddle_hit_burst(burst_color, &theme, self.sheets.white));
                 ripple_grid(ctx.world, pos, strength, radius);
+                self.music.paddle(ctx, paddle);
             }
         }
     }

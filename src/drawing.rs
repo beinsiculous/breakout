@@ -190,7 +190,8 @@ impl BreakoutGame {
 
         if self.pause.is_active() {
             let style = self.menu_style();
-            self.pause.draw(ctx.ui, ctx.window_size, &style);
+            let labels = PauseMenuLabels { hint: crate::music::PAUSE_HINT, ..PauseMenuLabels::default() };
+            self.pause.draw_labeled(ctx.ui, ctx.window_size, &style, &labels);
         }
     }
 }

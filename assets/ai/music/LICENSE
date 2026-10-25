@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Comment: Each song's stanza is written by the composer's Save from the song's
+ provenance and rewritten by every save; edit the provenance in the song.
+ Stanzas naming anything else are left as they are.
+
+Files: ai_food_pyramid.mid ai_food_pyramid.mid.ron
+Copyright: Giuseppe Verdi, 1871; sequenced by the Opus executor for Be Insiculous, 2026
+License: CC0-1.0

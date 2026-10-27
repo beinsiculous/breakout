@@ -1,13 +1,16 @@
 {
   "unlocks": {
-    "perfect_normal": {
-      "unlocked_at": 1781289383
-    },
     "clear_normal": {
       "unlocked_at": 1781289383
     },
     "combo_volley": {
       "unlocked_at": 1781289350
+    },
+    "last_life": {
+      "unlocked_at": 1792889653
+    },
+    "perfect_normal": {
+      "unlocked_at": 1781289383
     }
   }
 }

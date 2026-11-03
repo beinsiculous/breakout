@@ -181,11 +181,13 @@ constants, its moments, its counts and its pulse — standing on the engine's `G
 jam's latch, the beat and the telemetry. Its tests are `src/music_tests.rs`.
 
 - **The song** is `assets/ai/music/ai_food_pyramid.mid` and its sidecar: sixteen bars of 4/4 in
-  A♭ major at 112 BPM, looping. An agent sequenced it through the composer's command API (`song
-  new`, `song edit …`, `song save ai/music/ai_food_pyramid.mid`), so it sits under `ai/music` with
-  the `ai_` prefix until a person's pass promotes it; the composer's Save wrote the sidecar and the
-  stanza in `assets/ai/music/LICENSE`. Never hand-edit the sidecar — open the song in the composer
-  (`cargo run --features editor`, File → Open Song) and save it again.
+  A♭ major at 112 BPM, looping. An agent sequenced it through the editor's command API while the
+  editor still composed (`song new`, `song edit …`, `song save ai/music/ai_food_pyramid.mid`);
+  those score verbs are gone, the score is MIDI Evil's now and the engine's `song` verbs map it.
+  It sits under `ai/music` with the `ai_` prefix until a person's pass promotes it; the Conductor
+  panel's Save wrote the sidecar and the stanza in `assets/ai/music/LICENSE`. Never hand-edit the
+  sidecar — open the song in the Conductor panel (`cargo run --features editor`, File → Open
+  Song...) and save it again.
 - **The background** — the trombone's chords and the timpani's march — plays by itself from `init`
   on, through the menus, under the pause menu and under the game-over panel.
 - **Six bindings, two source kinds**, every part `quantize: Off` (a quantized trigger in the loop's
@@ -212,7 +214,7 @@ jam's latch, the beat and the telemetry. Its tests are `src/music_tests.rs`.
   balls, then the clear. `Music.triggered`, built only in tests, records the frame's calls.
 - **A match start decides by the song in the slot** (`GameMusic::restart`, from `start_game`, which
   every match start takes): none → requested again; the game's own → back to its top; another song
-  (the composer's audition in the editor) → left alone.
+  (the Conductor panel's audition in the editor) → left alone.
 - **The pulse**: on each bar line the paddle-hit ripple under each live tong, on any other beat a
   quarter of it (`BEAT_PULSE_FRACTION`; zero is bars only), while Serving or Playing and never under
   the pause menu.

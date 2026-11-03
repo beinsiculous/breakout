@@ -724,6 +724,7 @@ dependencies = [
  "renderer",
  "serde_json",
  "ui",
+ "windows-sys 0.61.2",
  "winit",
 ]
 

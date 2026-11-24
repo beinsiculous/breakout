@@ -226,9 +226,11 @@ harmony tests in `src/music_movement_tests.rs`.
 - `assets/soundfonts/ai_food_pyramid.sf2` contains only original finite MIDI Evil
   samples. Five triggered slots, one layer per key, below 4 MiB. The prepare script
   stages the shared engine build pipeline; it has no downloaded bank fallback.
-- Local audition bundles retain the existing contracts: game `/games/food-pyramid/v6/`,
-  editor `/playground/breakout/v5/`. Do not publish over those deployed immutable
-  versions. The four-entry version checklists in `src/web_entry.rs` apply to publication.
+- Website release bundles use game `/games/food-pyramid/v7/` and editor
+  `/playground/breakout/v6/`. The matching site content and bundles
+  are prepared in `insiculous_web`; its dev/main merges deploy staging/production.
+  Preserve previous version directories. The four-place checklists in
+  `src/web_entry.rs` must agree for every later release.
 - Dr. Maxwell's future clear cameo remains `breakout#3`'s and uses `clear`.
 
 ## Work tracking

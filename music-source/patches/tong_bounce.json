@@ -1,0 +1,22 @@
+{
+  "name": "tong_bounce",
+  "sample_rate": 32000,
+  "seed": 7208,
+  "gain": 0.85,
+  "duration_seconds": 1.2,
+  "pitch_tracking": true,
+  "oscillators": [
+    {
+      "waveform": "sine",
+      "start_frequency_hz": 440.0,
+      "end_frequency_hz": 440.0,
+      "amplitude": 1.0
+    }
+  ],
+  "envelope": {
+    "attack_seconds": 0.001,
+    "decay_seconds": 0.1,
+    "sustain_level": 0.0,
+    "release_seconds": 0.05
+  }
+}

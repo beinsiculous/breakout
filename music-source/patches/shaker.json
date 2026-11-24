@@ -1,0 +1,27 @@
+{
+  "name": "shaker",
+  "sample_rate": 32000,
+  "seed": 7205,
+  "gain": 0.17,
+  "duration_seconds": 1.2,
+  "pitch_tracking": false,
+  "oscillators": [
+    {
+      "waveform": "noise",
+      "start_frequency_hz": 180.0,
+      "end_frequency_hz": 45.0,
+      "amplitude": 1.0
+    }
+  ],
+  "envelope": {
+    "attack_seconds": 0.001,
+    "decay_seconds": 0.025,
+    "sustain_level": 0.0,
+    "release_seconds": 0.05
+  },
+  "filter": {
+    "mode": "high_pass",
+    "cutoff_hz": 6200.0,
+    "stages": 1
+  }
+}

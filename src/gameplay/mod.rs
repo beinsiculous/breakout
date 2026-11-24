@@ -79,8 +79,19 @@ impl BreakoutGame {
             self.music.pulse(ctx, paddles);
         }
 
-        self.update_paddles(ctx);
+        let paddles = [self.paddle, self.paddle_top];
+        let previous = paddles.map(|paddle| paddle.map(|entity| entity_x(ctx.world, entity)));
+        let requested_speeds = self.update_paddles(ctx);
         self.physics.update(ctx.world, ctx.delta_time);
+        if matches!(self.state, GameState::Serving | GameState::Playing) {
+            for (index, paddle) in paddles.into_iter().enumerate() {
+                if let (Some(paddle), Some(before)) = (paddle, previous[index]) {
+                    self.music.movement(ctx, index, paddle, entity_x(ctx.world, paddle) - before, requested_speeds[index]);
+                }
+            }
+        } else {
+            self.music.reset_movement();
+        }
         // The tongs are art beside their bodies: placed where physics left each
         // paddle, so the drawn tong is never a frame behind its collider.
         self.place_tongs(ctx.world);

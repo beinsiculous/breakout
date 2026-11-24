@@ -302,7 +302,7 @@ pub struct BreakoutGame {
     /// The title screen's art, loaded in `init`; `None` when it did not load, and the
     /// title keeps its plain centred menu.
     pub(crate) title_art: Option<TitleArt>,
-    /// The Triumphal March and the moments that play it.
+    /// Shelf Breaker and the moments that play it.
     pub(crate) music: crate::music::Music,
 }
 

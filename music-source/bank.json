@@ -1,0 +1,460 @@
+{
+  "version": 1,
+  "name": "Shelf Breaker",
+  "copyright": "Original AI synthesis; Be Insiculous; CC0-1.0",
+  "presets": [
+    {
+      "name": "shelf_bass",
+      "bank": 0,
+      "program": 0,
+      "zones": [
+        {
+          "wav": "rendered/shelf_bass_40.wav",
+          "keys": [
+            40,
+            40
+          ],
+          "root": 40,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/shelf_bass_43.wav",
+          "keys": [
+            43,
+            43
+          ],
+          "root": 43,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/shelf_bass_47.wav",
+          "keys": [
+            47,
+            47
+          ],
+          "root": 47,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/shelf_bass_50.wav",
+          "keys": [
+            50,
+            50
+          ],
+          "root": 50,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "rising_glass",
+      "bank": 0,
+      "program": 1,
+      "zones": [
+        {
+          "wav": "rendered/rising_glass_64.wav",
+          "keys": [
+            64,
+            64
+          ],
+          "root": 64,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/rising_glass_67.wav",
+          "keys": [
+            67,
+            67
+          ],
+          "root": 67,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/rising_glass_71.wav",
+          "keys": [
+            71,
+            71
+          ],
+          "root": 71,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/rising_glass_74.wav",
+          "keys": [
+            74,
+            74
+          ],
+          "root": 74,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/rising_glass_76.wav",
+          "keys": [
+            76,
+            76
+          ],
+          "root": 76,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/rising_glass_79.wav",
+          "keys": [
+            79,
+            79
+          ],
+          "root": 79,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/rising_glass_83.wav",
+          "keys": [
+            83,
+            83
+          ],
+          "root": 83,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/rising_glass_86.wav",
+          "keys": [
+            86,
+            86
+          ],
+          "root": 86,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "dust_chord",
+      "bank": 0,
+      "program": 2,
+      "zones": [
+        {
+          "wav": "rendered/dust_chord_52.wav",
+          "keys": [
+            52,
+            52
+          ],
+          "root": 52,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/dust_chord_59.wav",
+          "keys": [
+            59,
+            59
+          ],
+          "root": 59,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/dust_chord_62.wav",
+          "keys": [
+            62,
+            62
+          ],
+          "root": 62,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "Shelf drums",
+      "bank": 128,
+      "program": 0,
+      "zones": [
+        {
+          "wav": "rendered/break_kick_36.wav",
+          "keys": [
+            36,
+            36
+          ],
+          "root": 36,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/break_snare_38.wav",
+          "keys": [
+            38,
+            38
+          ],
+          "root": 38,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/shaker_42.wav",
+          "keys": [
+            42,
+            42
+          ],
+          "root": 42,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "brick_glass",
+      "bank": 0,
+      "program": 56,
+      "zones": [
+        {
+          "wav": "rendered/brick_glass_71.wav",
+          "keys": [
+            71,
+            71
+          ],
+          "root": 71,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/brick_glass_74.wav",
+          "keys": [
+            74,
+            74
+          ],
+          "root": 74,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/brick_glass_76.wav",
+          "keys": [
+            76,
+            76
+          ],
+          "root": 76,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/brick_glass_79.wav",
+          "keys": [
+            79,
+            79
+          ],
+          "root": 79,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/brick_glass_83.wav",
+          "keys": [
+            83,
+            83
+          ],
+          "root": 83,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/brick_glass_86.wav",
+          "keys": [
+            86,
+            86
+          ],
+          "root": 86,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "foil_crunch",
+      "bank": 0,
+      "program": 57,
+      "zones": [
+        {
+          "wav": "rendered/foil_crunch_74.wav",
+          "keys": [
+            74,
+            74
+          ],
+          "root": 74,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/foil_crunch_76.wav",
+          "keys": [
+            76,
+            76
+          ],
+          "root": 76,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/foil_crunch_79.wav",
+          "keys": [
+            79,
+            79
+          ],
+          "root": 79,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/foil_crunch_83.wav",
+          "keys": [
+            83,
+            83
+          ],
+          "root": 83,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/foil_crunch_86.wav",
+          "keys": [
+            86,
+            86
+          ],
+          "root": 86,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "tong_bounce",
+      "bank": 0,
+      "program": 58,
+      "zones": [
+        {
+          "wav": "rendered/tong_bounce_52.wav",
+          "keys": [
+            52,
+            52
+          ],
+          "root": 52,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/tong_bounce_55.wav",
+          "keys": [
+            55,
+            55
+          ],
+          "root": 55,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/tong_bounce_59.wav",
+          "keys": [
+            59,
+            59
+          ],
+          "root": 59,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/tong_bounce_62.wav",
+          "keys": [
+            62,
+            62
+          ],
+          "root": 62,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "fallen_shelf",
+      "bank": 0,
+      "program": 47,
+      "zones": [
+        {
+          "wav": "rendered/fallen_shelf_40.wav",
+          "keys": [
+            40,
+            40
+          ],
+          "root": 40,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/fallen_shelf_47.wav",
+          "keys": [
+            47,
+            47
+          ],
+          "root": 47,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    },
+    {
+      "name": "tong_slide",
+      "bank": 0,
+      "program": 59,
+      "zones": [
+        {
+          "wav": "rendered/tong_slide_74.wav",
+          "keys": [
+            74,
+            74
+          ],
+          "root": 74,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/tong_slide_76.wav",
+          "keys": [
+            76,
+            76
+          ],
+          "root": 76,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/tong_slide_79.wav",
+          "keys": [
+            79,
+            79
+          ],
+          "root": 79,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        },
+        {
+          "wav": "rendered/tong_slide_83.wav",
+          "keys": [
+            83,
+            83
+          ],
+          "root": 83,
+          "release_seconds": 0.05,
+          "longest_note_seconds": 0.54
+        }
+      ]
+    }
+  ]
+}

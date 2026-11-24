@@ -1180,6 +1180,7 @@ dependencies = [
 name = "insiculous_breakout"
 version = "0.1.0"
 dependencies = [
+ "editor",
  "editor_integration",
  "engine_core",
  "glam",

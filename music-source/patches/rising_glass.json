@@ -1,0 +1,28 @@
+{
+  "name": "rising_glass",
+  "sample_rate": 32000,
+  "seed": 7201,
+  "gain": 0.23,
+  "duration_seconds": 1.2,
+  "pitch_tracking": true,
+  "oscillators": [
+    {
+      "waveform": "triangle",
+      "start_frequency_hz": 440.0,
+      "end_frequency_hz": 440.0,
+      "amplitude": 1.0
+    },
+    {
+      "waveform": "sine",
+      "start_frequency_hz": 1320.0,
+      "end_frequency_hz": 1320.0,
+      "amplitude": 0.24
+    }
+  ],
+  "envelope": {
+    "attack_seconds": 0.001,
+    "decay_seconds": 0.14,
+    "sustain_level": 0.0,
+    "release_seconds": 0.05
+  }
+}

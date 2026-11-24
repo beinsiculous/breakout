@@ -97,17 +97,19 @@ impl BreakoutGame {
     /// Move the paddles, read the jaws' asks, move each resting tong toward its ask, and
     /// dress each paddle in the pose its tong draws. Runs before the physics step, so the
     /// step's contacts are against the collider dressed here.
-    pub(super) fn update_paddles(&mut self, ctx: &mut GameContext) {
+    pub(super) fn update_paddles(&mut self, ctx: &mut GameContext) -> [f32; 2] {
+        let mut requested_speeds = [0.0; 2];
         if let Some(paddle) = self.paddle {
-            self.update_paddle(ctx, paddle, PlayerId::P1, PADDLE_Y, PaddleSide::Bottom);
+            requested_speeds[0] = self.update_paddle(ctx, paddle, PlayerId::P1, PADDLE_Y, PaddleSide::Bottom);
         }
         if let Some(paddle) = self.paddle_top {
-            self.update_paddle(ctx, paddle, PlayerId::P2, PADDLE_TOP_Y, PaddleSide::Top);
+            requested_speeds[1] = self.update_paddle(ctx, paddle, PlayerId::P2, PADDLE_TOP_Y, PaddleSide::Top);
         }
         self.settle_launches(ctx.world);
         self.read_jaw_asks(ctx);
         self.drive_tongs(ctx.world);
         self.dress_paddles(ctx.world);
+        requested_speeds
     }
 
     /// End the launch's hold on each tong whose `opening` has landed in `open`, and
@@ -137,7 +139,7 @@ impl BreakoutGame {
     /// bottom paddle only (the mouse is player 1's device); bound input
     /// takes over whenever it's active. Whatever moved it, the move asks the
     /// paddle's tong to face the way it went.
-    fn update_paddle(&mut self, ctx: &GameContext, paddle: EntityId, player: PlayerId, y: f32, side: PaddleSide) {
+    fn update_paddle(&mut self, ctx: &GameContext, paddle: EntityId, player: PlayerId, y: f32, side: PaddleSide) -> f32 {
         let x = entity_x(ctx.world, paddle);
 
         // Solo: the lone paddle listens to both players' devices, so WASD,
@@ -165,6 +167,17 @@ impl BreakoutGame {
             self.tongs[side.index()].facing = facing;
         }
         self.physics.set_kinematic_target(paddle, Vec2::new(new_x, y), 0.0);
+        if ctx.delta_time <= 0.0 || new_x == x {
+            0.0
+        } else if axis != 0.0 {
+            (new_x - x) / ctx.delta_time
+        } else if mouse_moved {
+            // Mouse input is an absolute target; its per-frame delta measures the
+            // gesture without the fixed-step body's accumulated catch-up distance.
+            ctx.input.mouse_movement_delta().0 / ctx.delta_time
+        } else {
+            0.0
+        }
     }
 
     /// How far a paddle's player leans the jaw axis toward the field: up for the bottom

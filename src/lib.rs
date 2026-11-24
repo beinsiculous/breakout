@@ -27,6 +27,7 @@ mod levels;
 mod levels_tests;
 mod menu;
 mod music;
+mod movement;
 #[cfg(test)]
 mod music_tests;
 mod power_ups;

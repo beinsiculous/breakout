@@ -1,6 +1,6 @@
 //! The Food Pyramid's music through the real game and the engine's harness, whose audio
 //! manager plays the committed song on its virtual clock: the sidecar's shape and the bass
-//! line's tiling, the six moments and the sources they trigger on, the order within a frame,
+//! line's tiling, the seven moments and the sources they trigger on, the order within a frame,
 //! the stinger's notes, the pause jam keyed to the menu's navigation, the beat pulse, a match
 //! start deciding by the song in the slot, and a missing bank leaving the game silent.
 
@@ -122,7 +122,7 @@ fn poll(harness: &mut GameHarness<BreakoutGame>, limit: Duration, what: &str, do
 }
 
 #[test]
-fn the_committed_sidecar_binds_six_moments_on_unquantized_parts_with_two_instruments_on_the_march() {
+fn the_committed_sidecar_binds_seven_moments_on_unquantized_parts_with_two_instruments_on_the_march() {
     let text = std::fs::read_to_string(repository_assets().join(format!("{SONG_PATH}.ron"))).expect("the sidecar");
     let file = music_midi::parse_song_file("ai_food_pyramid.mid.ron", &text).expect("the sidecar parses");
     let binding = |action: &str| file.bindings.iter().find(|binding| binding.action == action).expect(action).clone();
@@ -133,12 +133,12 @@ fn the_committed_sidecar_binds_six_moments_on_unquantized_parts_with_two_instrum
     assert_ne!(brick.instrument, armor.instrument, "on its own instrument");
     assert_eq!(part(&brick.part).mode, PartMode::Loop);
     assert_eq!(part(&binding("paddle").part).mode, PartMode::AtSongPosition);
-    for action in ["loss", "clear", "menu"] {
+    for action in ["loss", "clear", "menu", "move"] {
         assert_eq!(part(&binding(action).part).mode, PartMode::Loop, "{action}");
     }
     assert!(file.parts.iter().all(|part| part.quantize == Quantize::Off), "no trigger is parked on the loop seam");
     assert!(file.provenance.is_some());
-    assert_eq!(file.soundfont, "soundfonts/food_pyramid.sf2");
+    assert_eq!(file.soundfont, "soundfonts/ai_food_pyramid.sf2");
 }
 
 #[test]
@@ -357,7 +357,7 @@ fn a_beat_ripples_under_the_tongs_while_the_match_runs_and_never_under_the_pause
         std::thread::sleep(Duration::from_millis(600));
         harness.step(FRAME, &[]);
     }
-    assert!(pulsed(&harness) > before, "a beat every 0.54 s at 112 BPM, while serving");
+    assert!(pulsed(&harness) > before, "a beat every 0.429 s at 140 BPM, while serving");
 
     key(&mut harness, KeyCode::Escape);
     let paused_at = pulsed(&harness);
@@ -385,7 +385,7 @@ fn a_match_start_requests_the_song_into_an_empty_slot_and_takes_its_own_back_to_
     start_match(&mut harness, GameMode::SinglePlayer, CLASSIC);
     settle(&mut harness);
     let position = harness.audio().song_position().expect("playing");
-    assert_eq!((position.bar, position.beat), (0, 0), "a match begins at the top of the march");
+    assert_eq!((position.bar, position.beat), (0, 0), "a match begins at the top of the score");
 }
 
 /// An asset folder holding every directory the game reads but `soundfonts/`, each a link to
@@ -437,3 +437,6 @@ fn without_its_bank_the_game_runs_silent_and_counts_every_trigger_it_refuses() {
     assert_eq!(harness.sound_sources().refused_triggers(), refused + 1, "refused, and counted");
     assert!(matches!(harness.game().state, GameState::Serving), "and the game runs on");
 }
+
+#[path = "music_movement_tests.rs"]
+mod movement;

@@ -63,6 +63,7 @@ impl BreakoutGame {
     }
 
     pub(crate) fn reset_to_title(&mut self, world: &mut World) {
+        self.music.reset_movement();
         self.destroy_all_balls(world);
         self.destroy_all_pickups(world);
         self.clear_transient_visuals(world);

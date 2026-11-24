@@ -1,6 +1,6 @@
 (
     version: 1,
-    soundfont: "soundfonts/food_pyramid.sf2",
+    soundfont: "soundfonts/ai_food_pyramid.sf2",
     looping: true,
     parts: [
         (
@@ -33,12 +33,18 @@
             mode: Loop,
             quantize: Off,
         ),
+        (
+            name: "movement",
+            track: Name("movement"),
+            mode: Loop,
+            quantize: Off,
+        ),
     ],
     instruments: [
         (
             name: "trumpet",
             source: SoundFont(
-                path: "soundfonts/food_pyramid.sf2",
+                path: "soundfonts/ai_food_pyramid.sf2",
                 bank: 0,
                 preset: 56,
             ),
@@ -46,7 +52,7 @@
         (
             name: "trombone",
             source: SoundFont(
-                path: "soundfonts/food_pyramid.sf2",
+                path: "soundfonts/ai_food_pyramid.sf2",
                 bank: 0,
                 preset: 57,
             ),
@@ -54,7 +60,7 @@
         (
             name: "tuba",
             source: SoundFont(
-                path: "soundfonts/food_pyramid.sf2",
+                path: "soundfonts/ai_food_pyramid.sf2",
                 bank: 0,
                 preset: 58,
             ),
@@ -62,9 +68,17 @@
         (
             name: "timpani",
             source: SoundFont(
-                path: "soundfonts/food_pyramid.sf2",
+                path: "soundfonts/ai_food_pyramid.sf2",
                 bank: 0,
                 preset: 47,
+            ),
+        ),
+        (
+            name: "movement",
+            source: SoundFont(
+                path: "soundfonts/ai_food_pyramid.sf2",
+                bank: 0,
+                preset: 59,
             ),
         ),
     ],
@@ -99,10 +113,15 @@
             part: "jam",
             instrument: "trumpet",
         ),
+        (
+            action: "move",
+            part: "movement",
+            instrument: "movement",
+        ),
     ],
     provenance: Some((
-        author: "Giuseppe Verdi, 1871; sequenced by the Opus executor for Be Insiculous, 2026",
+        author: "Original AI composition and MIDI Evil synthesis for Be Insiculous, 2026",
         license: "CC0-1.0",
     )),
-    midi_fingerprint: Some(6690789370318093330),
+    midi_fingerprint: Some(7188218457774455711),
 )

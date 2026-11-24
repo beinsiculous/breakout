@@ -588,3 +588,7 @@ mod startup_card_tests {
     }
 }
 
+
+/// Movement feedback ignores slow drift and limits reversal chatter.
+pub(crate) const MOVEMENT_SOUND_MIN_SPEED: f32 = 15.0;
+pub(crate) const MOVEMENT_SOUND_COOLDOWN: f32 = 0.18;

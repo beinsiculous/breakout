@@ -1,0 +1,22 @@
+{
+  "name": "fallen_shelf",
+  "sample_rate": 32000,
+  "seed": 7209,
+  "gain": 1.0,
+  "duration_seconds": 1.2,
+  "pitch_tracking": true,
+  "oscillators": [
+    {
+      "waveform": "triangle",
+      "start_frequency_hz": 110.0,
+      "end_frequency_hz": 110.0,
+      "amplitude": 1.0
+    }
+  ],
+  "envelope": {
+    "attack_seconds": 0.001,
+    "decay_seconds": 0.3,
+    "sustain_level": 0.0,
+    "release_seconds": 0.05
+  }
+}

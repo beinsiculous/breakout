@@ -1,20 +1,9 @@
-//! The Food Pyramid's music: Verdi's Triumphal March from *Aida*, which the engine's
-//! conductor plays as a song.
-//!
-//! The background — the trombone's chords and the timpani's march — plays by itself from
-//! `init` on, through the menus and under the pause menu. Six moments trigger the song's
-//! bindings. A destroyed brick walks the fanfare (the shared `march` part) on the trumpet,
-//! on the game's source, so its note rings on after the brick is gone; a foil-wrapped brick
-//! that survives its hit walks the same tune on the trombone, on the brick's own source, so
-//! the note is released when the brick dies. A tong hit plays the bass line's note at the
-//! song's position on the tuba, on the paddle's own source. A lost ball strikes the dirge,
-//! a cleared board the final chord, and a move in the pause menu the `jam` counter-line.
-//! The backdrop grid ripples under each tong on the song's bars and beats.
-//!
-//! The rules every game's song shares are the engine's `GameMusic`; what is here is the
-//! game's: its moments, its counts and where its pulse lands. Within a frame the moments go
-//! out in the order `update_gameplay` runs its passes — paddles, then bricks (descending
-//! index), then lost balls, then the clear.
+//! Shelf Breaker: original E-minor breakbeat with independently triggered feedback.
+//! The backing plays under menus and pauses. Destroyed bricks and clear rewards
+//! use the game's source; surviving armor and paddle bounces use their entity source.
+//! Brick and armor share the march cursor; paddle follows a continuously tiled bass
+//! line. Loss, menu and quiet tong movement have independent parts. Existing collision
+//! order remains paddles, bricks (descending index), lost balls, then clear.
 
 use engine_core::prelude::*;
 
@@ -24,12 +13,13 @@ use crate::gameplay::ripple_grid;
 /// The song under the asset base: an agent's first cut, under `ai/music` until a person's
 /// pass promotes it.
 pub(crate) const SONG_PATH: &str = "ai/music/ai_food_pyramid.mid";
-/// The song's six bindings.
+/// The song's seven bindings.
 pub(crate) const BRICK_BINDING: &str = "brick";
 pub(crate) const ARMOR_BINDING: &str = "armor";
 pub(crate) const PADDLE_BINDING: &str = "paddle";
 pub(crate) const LOSS_BINDING: &str = "loss";
 pub(crate) const CLEAR_BINDING: &str = "clear";
+pub(crate) const MOVE_BINDING: &str = "move";
 pub(crate) const MENU_BINDING: &str = "menu";
 /// A beat that is not a bar line ripples under the tongs at this share of a paddle hit;
 /// zero pulses on the bars only.
@@ -46,6 +36,7 @@ pub(crate) struct MusicCounts {
     pub(crate) paddle_hits: u64,
     pub(crate) losses: u64,
     pub(crate) clears: u64,
+    pub(crate) moves: u64,
 }
 
 /// See the module docs.
@@ -53,6 +44,7 @@ pub(crate) struct MusicCounts {
 pub(crate) struct Music {
     pub(crate) game: GameMusic,
     pub(crate) counts: MusicCounts,
+    movement: [crate::movement::MovementCue; 2],
     /// The bindings this frame triggered, in the order the game sent them: production's
     /// call order recorded for the same-frame order tests, never reconstructed.
     #[cfg(test)]
@@ -64,6 +56,7 @@ impl Default for Music {
         Self {
             game: GameMusic::new(SONG_PATH, "food pyramid", "FOOD_PYRAMID_TELEMETRY"),
             counts: MusicCounts::default(),
+            movement: [crate::movement::MovementCue::default(); 2],
             #[cfg(test)]
             triggered: Vec::new(),
         }
@@ -71,6 +64,19 @@ impl Default for Music {
 }
 
 impl Music {
+    pub(crate) fn reset_movement(&mut self) {
+        self.movement = [crate::movement::MovementCue::default(); 2];
+    }
+
+    /// Completed displacement excludes held input at a clamped wall.
+    pub(crate) fn movement(&mut self, ctx: &mut GameContext, index: usize, paddle: EntityId, displacement: f32, requested_speed: f32) {
+        if self.movement[index].observe(displacement, ctx.delta_time, requested_speed) {
+            self.counts.moves += 1;
+            let source = ctx.sources.entity(paddle);
+            self.send(ctx, MOVE_BINDING, source);
+        }
+    }
+
     /// Request the song before any gesture; on the web it starts on the first click or key.
     pub(crate) fn start(&mut self, ctx: &mut GameContext) {
         self.game.start(ctx);
@@ -78,10 +84,11 @@ impl Music {
 
     /// A match starts: the engine's identity rule decides by the song in the slot.
     pub(crate) fn restart(&mut self, ctx: &mut GameContext) {
+        self.reset_movement();
         self.game.restart(ctx);
     }
 
-    /// A brick was destroyed: the fanfare's next unit on the trumpet, on the game's source —
+    /// A brick was destroyed: the hook's next unit on the brittle pluck, on the game's source —
     /// the brick is gone in the same call, and its note must ring on.
     pub(crate) fn brick(&mut self, ctx: &mut GameContext) {
         self.counts.bricks += 1;
@@ -89,7 +96,7 @@ impl Music {
         self.send(ctx, BRICK_BINDING, source);
     }
 
-    /// A foil-wrapped brick survived a hit: the fanfare's next unit on the trombone, on the
+    /// A foil-wrapped brick survived a hit: the hook's next unit on the heavier foil synth, on the
     /// brick's own source, so a second ball that kills it mid-note releases the note.
     pub(crate) fn armor(&mut self, ctx: &mut GameContext, brick: EntityId) {
         self.counts.armor_hits += 1;
@@ -98,7 +105,7 @@ impl Music {
     }
 
     /// A tong returned a ball (a chomp included): the bass note written for this moment of
-    /// the march, on the paddle's own source.
+    /// the score, on the paddle's own source.
     pub(crate) fn paddle(&mut self, ctx: &mut GameContext, paddle: EntityId) {
         self.counts.paddle_hits += 1;
         let source = ctx.sources.entity(paddle);
@@ -112,7 +119,7 @@ impl Music {
         self.send(ctx, LOSS_BINDING, source);
     }
 
-    /// The board is cleared: the march's final chord, on the game's source.
+    /// The board is cleared: the bright reward chord, on the game's source.
     pub(crate) fn clear(&mut self, ctx: &mut GameContext) {
         self.counts.clears += 1;
         let source = ctx.sources.game();
@@ -121,6 +128,7 @@ impl Music {
 
     /// The pause menu's frame: a move up or down jams one unit of the counter-line.
     pub(crate) fn follow_pause(&mut self, ctx: &mut GameContext, paused: bool) {
+        if paused { self.reset_movement(); }
         if self.game.follow_pause(ctx, paused, MENU_BINDING) {
             self.record(MENU_BINDING);
         }
@@ -148,8 +156,8 @@ impl Music {
         let (counts, jam_units, pulsed) = (self.counts, self.game.jam_units(), self.game.pulsed());
         self.game.update(ctx, || {
             format!(
-                "bricks={} armor_hits={} paddle_hits={} losses={} clears={} jam_units={jam_units} pulsed={pulsed}",
-                counts.bricks, counts.armor_hits, counts.paddle_hits, counts.losses, counts.clears
+                "bricks={} armor_hits={} paddle_hits={} losses={} clears={} moves={} jam_units={jam_units} pulsed={pulsed}",
+                counts.bricks, counts.armor_hits, counts.paddle_hits, counts.losses, counts.clears, counts.moves
             )
         });
     }

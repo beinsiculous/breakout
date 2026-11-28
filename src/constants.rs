@@ -538,10 +538,10 @@ mod tests {
 /// engine's. The engine shows them before `init` (`GameConfig::with_startup_splashes`).
 pub(crate) const STARTUP_CARDS: [&str; 2] = [
     "sprites/ai_be_insiculous_320x192.png",
-    "sprites/ai_insiculous_2d_maxwell_splash_320x192.png",
+    "sprites/ai_insiculous_2d_cubert_splash_320x192.png",
 ];
 /// The engine's icon: the window's until the game draws one of its own.
-pub(crate) const WINDOW_ICON: &str = "sprites/ai_insiculous_2d_maxwell_icon_64x64.png";
+pub(crate) const WINDOW_ICON: &str = "sprites/ai_insiculous_2d_cubert_icon_64x64.png";
 
 // --- the title art --------------------------------------------------------------
 
